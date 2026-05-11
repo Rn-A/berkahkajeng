@@ -1,6 +1,6 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
-import { createServer as createViteServer } from "vite";
+// import { createServer as createViteServer } from "vite"; // Removed static import for Vercel compatibility
 import mysql from "mysql2/promise";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -1066,10 +1066,11 @@ async function startServer() {
   // Ensure DB init is started
   initDB().catch(err => console.error("DB Init Error:", err));
 
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
     app.use(vite.middlewares);
-  } else {
+  } else if (process.env.NODE_ENV === "production") {
     app.use(express.static("dist"));
     app.get("*", (req, res) => res.sendFile(path.resolve("dist/index.html")));
   }
