@@ -1,4 +1,4 @@
-import { app, initDB } from "../server";
+import { app, initDB } from "../server.js";
 
 // Initializing database for serverless context
 let isInitialized = false;
