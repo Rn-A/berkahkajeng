@@ -4,9 +4,10 @@ import { cn } from '../lib/utils';
 
 interface LoginProps {
   onLogin: (credentials: any) => Promise<void>;
+  onForgotPassword: () => void;
 }
 
-export default function Login({ onLogin }: LoginProps) {
+export default function Login({ onLogin, onForgotPassword }: LoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -88,6 +89,16 @@ export default function Login({ onLogin }: LoginProps) {
                 <LogIn size={24} />
                 {isLoading ? 'Memproses...' : 'Masuk ke Sistem'}
               </button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={onForgotPassword}
+                  className="text-sm font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                >
+                  Lupa Kata Sandi?
+                </button>
+              </div>
             </form>
 
             <div className="mt-8 pt-8 border-t border-zinc-100 dark:border-zinc-800">

@@ -11,6 +11,7 @@ export default function ProfileView({ auth, onUpdateAuth }: ProfileViewProps) {
   const [formData, setFormData] = useState({
     full_name: auth.user?.full_name || '',
     username: auth.user?.username || '',
+    email: auth.user?.email || '',
     current_password: '',
     new_password: '',
     confirm_password: ''
@@ -47,6 +48,7 @@ export default function ProfileView({ auth, onUpdateAuth }: ProfileViewProps) {
         body: JSON.stringify({
           full_name: formData.full_name,
           username: formData.username,
+          email: formData.email,
           current_password: formData.current_password,
           new_password: formData.new_password
         })
@@ -131,6 +133,18 @@ export default function ProfileView({ auth, onUpdateAuth }: ProfileViewProps) {
                   className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-green-500 dark:text-white outline-none font-mono transition-all"
                 />
                 <p className="text-[10px] text-zinc-400 mt-1">Gunakan huruf kecil tanpa spasi.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Alamat Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={e => setFormData({...formData, email: e.target.value})}
+                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-green-500 dark:text-white outline-none transition-all"
+                  placeholder="admin@example.com"
+                />
+                <p className="text-[10px] text-zinc-400 mt-1">Digunakan untuk fitur Lupa Sandi.</p>
               </div>
             </div>
 

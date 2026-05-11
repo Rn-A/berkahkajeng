@@ -9,6 +9,7 @@ import path from "path";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import rateLimit from 'express-rate-limit';
+import nodemailer from "nodemailer";
 
 declare global {
   namespace Express {
@@ -100,7 +101,12 @@ export async function initDB() {
       // Kolom untuk reversal stok
       await connection.query(`ALTER TABLE sales_items ADD COLUMN logs_deducted INT DEFAULT 1`);
     } catch (e) { /* ignore */ }
-    await connection.query(`CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL, role ENUM('owner', 'mandor') NOT NULL, full_name VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+    await connection.query(`CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL, role ENUM('owner', 'mandor') NOT NULL, full_name VARCHAR(100), email VARCHAR(255) UNIQUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+    try {
+      await connection.query(`ALTER TABLE users ADD COLUMN email VARCHAR(255) UNIQUE`);
+    } catch (e) { /* ignore if column exists */ }
+
+    await connection.query(`CREATE TABLE IF NOT EXISTS password_resets (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL, token VARCHAR(255) NOT NULL, expires_at TIMESTAMP NOT NULL, INDEX(email), INDEX(token))`);
     await connection.query(`CREATE TABLE IF NOT EXISTS suppliers (id VARCHAR(36) PRIMARY KEY, name VARCHAR(255) NOT NULL, phone VARCHAR(20), address TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
     await connection.query(`CREATE TABLE IF NOT EXISTS customers (id VARCHAR(36) PRIMARY KEY, name VARCHAR(255) NOT NULL, phone VARCHAR(20), address TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
     await connection.query(`CREATE TABLE IF NOT EXISTS expenses (id VARCHAR(36) PRIMARY KEY, category VARCHAR(100) NOT NULL, description TEXT, amount DECIMAL(15, 2) NOT NULL, date DATE NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
@@ -335,13 +341,12 @@ apiRouter.post("/login", loginLimiter, async (req, res) => {
 
       if (!validPass) {
         console.log(`[${SERVER_ID}] DB Login FAILED: Password mismatch for ${username}`);
-        // Audit login gagal
         await logAudit(null as any, "LOGIN_FAILED", `Percobaan login gagal untuk username: ${username}`);
-        return res.status(401).json({ error: "Password salah (Mode Database)." });
+        return res.status(401).json({ error: "Password salah." });
       }
 
       console.log(`[${SERVER_ID}] DB Login SUCCESS for ${username}`);
-      const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+      const token = jwt.sign({ id: user.id, username: user.username, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
 
       await logAudit(user.id, "LOGIN", `User ${username} logged in`);
 
@@ -350,14 +355,16 @@ apiRouter.post("/login", loginLimiter, async (req, res) => {
         username: user.username,
         role: user.role,
         full_name: user.full_name,
+        email: user.email,
         token
       });
     } else {
-      // Audit login gagal
+      console.log(`[${SERVER_ID}] DB Login FAILED: Username not found: ${username}`);
       await logAudit(null as any, "LOGIN_FAILED", `Percobaan login gagal - username tidak ditemukan: ${username}`);
       res.status(401).json({ error: "Username tidak ditemukan." });
     }
   } catch (error) {
+    console.error("Login Error:", error);
     res.status(500).json({ error: (error as Error).message });
   }
 });
@@ -370,6 +377,98 @@ apiRouter.post("/logout", authenticateToken, async (req, res) => {
 
 apiRouter.get("/health", (req, res) => {
   res.json({ status: "ok", message: "Backend is running", timestamp: new Date().toISOString() });
+});
+
+// SMTP Transporter
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '465'),
+  secure: process.env.SMTP_PORT === '465',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+// Forgot Password API
+apiRouter.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email diperlukan" });
+
+  try {
+    if (dbConnected && pool) {
+      const [users]: any = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+      if (users.length === 0) {
+        // Jangan beri tahu jika email tidak ada demi keamanan (prevent email harvesting)
+        // Tapi tetap kirim respon sukses seolah-olah email dikirim
+        return res.json({ message: "Jika email terdaftar, instruksi reset akan dikirim." });
+      }
+
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 3600000); // 1 jam
+
+      await pool.query("DELETE FROM password_resets WHERE email = ?", [email]);
+      await pool.query("INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)", [email, token, expiresAt]);
+
+      const resetLink = `${process.env.ALLOWED_ORIGIN}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+      
+      const mailOptions = {
+        from: process.env.SMTP_FROM || '"Berkah Kajeng" <no-reply@berkahkanjeng.com>',
+        to: email,
+        subject: "Reset Kata Sandi - Berkah Kajeng",
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px;">
+            <h2 style="color: #2563eb;">Reset Kata Sandi</h2>
+            <p>Halo,</p>
+            <p>Kami menerima permintaan untuk mereset kata sandi akun Berkah Kajeng Anda.</p>
+            <p>Silakan klik tombol di bawah ini untuk mengganti kata sandi Anda. Link ini akan kedaluwarsa dalam 1 jam.</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${resetLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Kata Sandi</a>
+            </div>
+            <p>Jika tombol di atas tidak berfungsi, Anda bisa menyalin link berikut ke browser Anda:</p>
+            <p style="word-break: break-all; color: #666;">${resetLink}</p>
+            <p>Jika Anda tidak merasa melakukan permintaan ini, silakan abaikan email ini.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="font-size: 12px; color: #888;">Ini adalah email otomatis, mohon tidak membalas email ini.</p>
+          </div>
+        `
+      };
+
+      await transporter.sendMail(mailOptions);
+      res.json({ message: "Instruksi reset kata sandi telah dikirim ke email Anda." });
+    } else {
+      res.status(503).json({ error: "Database tidak tersedia" });
+    }
+  } catch (error) {
+    console.error("Forgot Password Error:", error);
+    res.status(500).json({ error: "Gagal memproses permintaan reset kata sandi" });
+  }
+});
+
+// Reset Password API
+apiRouter.post("/reset-password", async (req, res) => {
+  const { email, token, newPassword } = req.body;
+  if (!email || !token || !newPassword) return res.status(400).json({ error: "Data tidak lengkap" });
+
+  try {
+    if (dbConnected && pool) {
+      const [resets]: any = await pool.query("SELECT * FROM password_resets WHERE email = ? AND token = ? AND expires_at > NOW()", [email, token]);
+      if (resets.length === 0) {
+        return res.status(400).json({ error: "Token tidak valid atau sudah kedaluwarsa" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await pool.query("UPDATE users SET password = ? WHERE email = ?", [hashedPassword, email]);
+      await pool.query("DELETE FROM password_resets WHERE email = ?", [email]);
+
+      res.json({ message: "Kata sandi berhasil diperbarui. Silakan login kembali." });
+    } else {
+      res.status(503).json({ error: "Database tidak tersedia" });
+    }
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+    res.status(500).json({ error: "Gagal memperbarui kata sandi" });
+  }
 });
 
 // Ping/Debug
@@ -913,7 +1012,7 @@ apiRouter.delete("/expenses/:id", authenticateToken, async (req, res) => {
 apiRouter.get("/users", authenticateToken, async (req, res) => {
   if (req.user.role !== 'owner') return res.status(403).json({ error: "Unauthorized" });
   if (dbConnected && pool) {
-    const [rows]: any = await pool!.query("SELECT id, username, role, full_name, created_at FROM users ORDER BY created_at DESC");
+    const [rows]: any = await pool!.query("SELECT id, username, role, full_name, email, created_at FROM users ORDER BY created_at DESC");
     res.json(rows);
   } else {
     res.json([]);
@@ -922,13 +1021,13 @@ apiRouter.get("/users", authenticateToken, async (req, res) => {
 
 apiRouter.post("/users", authenticateToken, async (req, res) => {
   if (req.user.role !== 'owner') return res.status(403).json({ error: "Unauthorized" });
-  const { username, password, full_name } = req.body;
+  const { username, password, full_name, email } = req.body;
   if (!username || !password || !full_name) return res.status(400).json({ error: "Missing fields" });
 
   if (dbConnected && pool) {
     try {
       const hashed = await bcrypt.hash(password, 10);
-      await pool!.query("INSERT INTO users (username, password, role, full_name) VALUES (?, ?, 'mandor', ?)", [username, hashed, full_name]);
+      await pool!.query("INSERT INTO users (username, password, role, full_name, email) VALUES (?, ?, 'mandor', ?, ?)", [username, hashed, full_name, email]);
       await logAudit(req.user.id, "USER_CREATED", `Created mandor account: ${username}`);
       res.status(201).json({ message: "User created" });
     } catch (e: any) {
@@ -943,16 +1042,16 @@ apiRouter.post("/users", authenticateToken, async (req, res) => {
 apiRouter.put("/users/:id", authenticateToken, async (req, res) => {
   if (req.user.role !== 'owner') return res.status(403).json({ error: "Unauthorized" });
   const { id } = req.params;
-  const { username, full_name, password } = req.body;
+  const { username, full_name, email, password } = req.body;
   
   if (dbConnected && pool) {
     try {
       if (password && password.trim() !== '') {
         const hashed = await bcrypt.hash(password, 10);
-        await pool!.query("UPDATE users SET username = ?, full_name = ?, password = ? WHERE id = ? AND role = 'mandor'", [username, full_name, hashed, id]);
+        await pool!.query("UPDATE users SET username = ?, full_name = ?, email = ?, password = ? WHERE id = ? AND role = 'mandor'", [username, full_name, email, hashed, id]);
         await logAudit(req.user.id, "USER_UPDATED", `Updated mandor account & password: ${username}`);
       } else {
-        await pool!.query("UPDATE users SET username = ?, full_name = ? WHERE id = ? AND role = 'mandor'", [username, full_name, id]);
+        await pool!.query("UPDATE users SET username = ?, full_name = ?, email = ? WHERE id = ? AND role = 'mandor'", [username, full_name, email, id]);
         await logAudit(req.user.id, "USER_UPDATED", `Updated mandor account: ${username}`);
       }
       res.json({ message: "User updated" });
@@ -979,7 +1078,7 @@ apiRouter.delete("/users/:id", authenticateToken, async (req, res) => {
 });
 
 apiRouter.put("/profile", authenticateToken, async (req, res) => {
-  const { username, full_name, current_password, new_password } = req.body;
+  const { username, full_name, email, current_password, new_password } = req.body;
   const userId = req.user.id;
   
   if (dbConnected && pool) {
@@ -999,15 +1098,15 @@ apiRouter.put("/profile", authenticateToken, async (req, res) => {
         if (!validPass) return res.status(401).json({ error: "Password saat ini salah." });
         
         const hashed = await bcrypt.hash(new_password, 10);
-        await pool!.query("UPDATE users SET username = ?, full_name = ?, password = ? WHERE id = ?", [username, full_name, hashed, userId]);
+        await pool!.query("UPDATE users SET username = ?, full_name = ?, email = ?, password = ? WHERE id = ?", [username, full_name, email, hashed, userId]);
         await logAudit(userId, "PROFILE_UPDATED", `Updated profile and password`);
       } else {
-        await pool!.query("UPDATE users SET username = ?, full_name = ? WHERE id = ?", [username, full_name, userId]);
+        await pool!.query("UPDATE users SET username = ?, full_name = ?, email = ? WHERE id = ?", [username, full_name, email, userId]);
         await logAudit(userId, "PROFILE_UPDATED", `Updated profile`);
       }
       
-      const [updatedUser]: any = await pool!.query("SELECT id, username, role, full_name FROM users WHERE id = ?", [userId]);
-      const token = jwt.sign({ id: updatedUser[0].id, username: updatedUser[0].username, role: updatedUser[0].role }, JWT_SECRET, { expiresIn: '24h' });
+      const [updatedUser]: any = await pool!.query("SELECT id, username, role, full_name, email FROM users WHERE id = ?", [userId]);
+      const token = jwt.sign({ id: updatedUser[0].id, username: updatedUser[0].username, role: updatedUser[0].role, email: updatedUser[0].email }, JWT_SECRET, { expiresIn: '24h' });
       res.json({ message: "Profile updated", user: { ...updatedUser[0], token } });
     } catch (e: any) {
       if (e.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: "Username sudah digunakan" });

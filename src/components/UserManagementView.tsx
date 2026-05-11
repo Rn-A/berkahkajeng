@@ -7,6 +7,7 @@ interface Account {
   username: string;
   role: 'owner' | 'mandor';
   full_name: string;
+  email?: string;
   created_at: string;
 }
 
@@ -21,7 +22,7 @@ export default function UserManagementView({ auth, onDeleteUser }: UserManagemen
   const [searchQuery, setSearchQuery] = useState('');
   
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ id: 0, username: '', full_name: '', password: '' });
+  const [formData, setFormData] = useState({ id: 0, username: '', full_name: '', email: '', password: '' });
   const [errorMsg, setErrorMsg] = useState('');
 
   const fetchUsers = async () => {
@@ -77,7 +78,7 @@ export default function UserManagementView({ auth, onDeleteUser }: UserManagemen
         }
       }
       setIsEditing(false);
-      setFormData({ id: 0, username: '', full_name: '', password: '' });
+      setFormData({ id: 0, username: '', full_name: '', email: '', password: '' });
       fetchUsers();
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -85,7 +86,7 @@ export default function UserManagementView({ auth, onDeleteUser }: UserManagemen
   };
 
   const handleEdit = (u: Account) => {
-    setFormData({ id: u.id, username: u.username, full_name: u.full_name, password: '' });
+    setFormData({ id: u.id, username: u.username, full_name: u.full_name, email: u.email || '', password: '' });
     setIsEditing(true);
     setErrorMsg('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -170,6 +171,20 @@ export default function UserManagementView({ auth, onDeleteUser }: UserManagemen
 
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                  <AtSign size={12} />
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={e => setFormData({...formData, email: e.target.value})}
+                  className="w-full px-5 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-green-500 dark:text-white outline-none transition-all"
+                  placeholder="misal: budi@gmail.com"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
                   <Key size={12} />
                   Password {isEditing && <span className="text-zinc-400 lowercase font-normal italic">(Reset?)</span>}
                 </label>
@@ -196,7 +211,7 @@ export default function UserManagementView({ auth, onDeleteUser }: UserManagemen
                     type="button"
                     onClick={() => {
                       setIsEditing(false);
-                      setFormData({ id: 0, username: '', full_name: '', password: '' });
+                      setFormData({ id: 0, username: '', full_name: '', email: '', password: '' });
                       setErrorMsg('');
                     }}
                     className="w-full px-6 py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-2xl font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
@@ -263,7 +278,7 @@ export default function UserManagementView({ auth, onDeleteUser }: UserManagemen
                               </div>
                               <div className="flex flex-col">
                                 <span className="font-bold dark:text-white">{u.full_name}</span>
-                                <span className="text-xs text-zinc-400 font-mono">@{u.username}</span>
+                                <span className="text-xs text-zinc-400 font-mono">@{u.username} • {u.email || 'No Email'}</span>
                               </div>
                             </div>
                           </td>
