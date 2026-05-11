@@ -124,17 +124,15 @@ export async function initDB() {
       mandor: "mandor123"
     };
 
-    if (existingUsers.length === 0 && process.env.ALLOW_AUTO_USERS === 'true') {
-      // No users at all — create fresh with proper hashes only if allowed
+    if (existingUsers.length === 0) {
+      // No users at all — create fresh with proper hashes
       const ownerPass = await bcrypt.hash("admin123", 10);
       const mandorPass = await bcrypt.hash("mandor123", 10);
       await connection.query(
         `INSERT INTO users (username, password, role, full_name) VALUES ('owner', ?, 'owner', 'Pemilik Pangkalan'), ('mandor', ?, 'mandor', 'Mandor Lapangan')`,
         [ownerPass, mandorPass]
       );
-      console.log(`[${SERVER_ID}] ✅ Default users created with hashed passwords. PLEASE CHANGE THEM IMMEDIATELY.`);
-    } else if (existingUsers.length === 0) {
-      console.warn(`[${SERVER_ID}] ⚠️  Database has NO users and ALLOW_AUTO_USERS is not true. You may be locked out!`);
+      console.log(`[${SERVER_ID}] ✅ Default users created with hashed passwords.`);
     } else {
       // Users exist — check & repair each one
       for (const user of existingUsers) {
