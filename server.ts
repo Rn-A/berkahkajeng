@@ -369,6 +369,10 @@ apiRouter.post("/logout", authenticateToken, async (req, res) => {
   res.json({ message: "Logged out successfully" });
 });
 
+apiRouter.get("/health", (req, res) => {
+  res.json({ status: "ok", message: "Backend is running", timestamp: new Date().toISOString() });
+});
+
 // Ping/Debug
 apiRouter.get("/ping", (req, res) => {
   res.json({ message: "pong", timestamp: new Date().toISOString(), server_id: SERVER_ID });
