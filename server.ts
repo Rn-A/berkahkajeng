@@ -20,7 +20,7 @@ declare global {
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 const PORT = 3000;
 const SERVER_ID = Math.random().toString(36).substring(7);
 const JWT_SECRET = process.env.JWT_SECRET || "berkah-kajeng-strong-secret-placeholder-2024-change-me";
@@ -44,17 +44,36 @@ let dbConnected = false;
 
 
 // Helper to initialize database schema
-async function initDB() {
+export async function initDB() {
   try {
+    // 1. Create a temporary connection without database to ensure DB exists
+    const setupConn = await mysql.createConnection({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || "3306"),
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      ssl: process.env.DB_HOST?.includes('tidbcloud.com') ? {
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: false
+      } : undefined
+    });
+    await setupConn.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME || 'berkah_kajeng'}\``);
+    await setupConn.end();
+
     pool = mysql.createPool({
       host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || "3306"),
       user: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_NAME || 'berkah_kajeng',
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
-      connectTimeout: 5000
+      connectTimeout: 10000,
+      ssl: process.env.DB_HOST?.includes('tidbcloud.com') ? {
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: false
+      } : undefined
     });
 
     // Test connection
@@ -1072,4 +1091,8 @@ async function startServer() {
   process.on("SIGTERM", shutdown);
 }
 
-startServer();
+export default app;
+
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  startServer();
+}
