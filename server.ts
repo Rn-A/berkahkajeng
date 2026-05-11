@@ -31,6 +31,7 @@ app.use(cors({
   origin: process.env.ALLOWED_ORIGIN || 'http://localhost:3000',
   credentials: true
 }));
+app.set('trust proxy', 1); // Trust Vercel proxy
 app.use(express.json());
 
 app.use(express.json());
@@ -1052,7 +1053,14 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 // Register API routes
 console.log(`[${SERVER_ID}] Registering API routes at /api`);
-app.use("/api", (req, res, next) => {
+app.use("/api", async (req, res, next) => {
+  if (!dbConnected) {
+    try {
+      await initDB();
+    } catch (e) {
+      console.error("Delayed DB Init Error:", e);
+    }
+  }
   res.setHeader('X-Backend-Server', SERVER_ID);
   res.setHeader('X-API-Request', 'true');
   next();
