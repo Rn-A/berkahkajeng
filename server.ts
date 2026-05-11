@@ -399,7 +399,7 @@ apiRouter.post("/forgot-password", async (req, res) => {
   if (!email) return res.status(400).json({ error: "Email diperlukan" });
 
   try {
-    if (dbConnected && pool) {
+    if (pool) {
       const [users]: any = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
       if (users.length === 0) {
         // Jangan beri tahu jika email tidak ada demi keamanan (prevent email harvesting)
@@ -440,7 +440,7 @@ apiRouter.post("/forgot-password", async (req, res) => {
       await transporter.sendMail(mailOptions);
       res.json({ message: "Instruksi reset kata sandi telah dikirim ke email Anda." });
     } else {
-      res.status(503).json({ error: "Database tidak tersedia" });
+      res.status(503).json({ error: "Sistem database sedang menyiapkan koneksi. Silakan coba lagi dalam beberapa detik." });
     }
   } catch (error) {
     console.error("Forgot Password Error:", error);
@@ -454,20 +454,19 @@ apiRouter.post("/reset-password", async (req, res) => {
   if (!email || !token || !newPassword) return res.status(400).json({ error: "Data tidak lengkap" });
 
   try {
-    if (dbConnected && pool) {
+    if (pool) {
       const [resets]: any = await pool.query("SELECT * FROM password_resets WHERE email = ? AND token = ? AND expires_at > NOW()", [email, token]);
       if (resets.length === 0) {
         return res.status(400).json({ error: "Token tidak valid atau sudah kedaluwarsa" });
-      }
-
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await pool.query("UPDATE users SET password = ? WHERE email = ?", [hashedPassword, email]);
-      await pool.query("DELETE FROM password_resets WHERE email = ?", [email]);
-
-      res.json({ message: "Kata sandi berhasil diperbarui. Silakan login kembali." });
-    } else {
-      res.status(503).json({ error: "Database tidak tersedia" });
+    const [resets]: any = await pool.query("SELECT * FROM password_resets WHERE email = ? AND token = ? AND expires_at > NOW()", [email, token]);
+    if (resets.length === 0) {
+      return res.status(400).json({ error: "Token tidak valid atau sudah kedaluwarsa" });
     }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query("UPDATE users SET password = ? WHERE email = ?", [hashedPassword, email]);
+    await pool.query("DELETE FROM password_resets WHERE email = ?", [email]);
+    res.json({ message: "Kata sandi berhasil diperbarui. Silakan login kembali." });
   } catch (error) {
     console.error("Reset Password Error:", error);
     res.status(500).json({ error: "Gagal memperbarui kata sandi" });
