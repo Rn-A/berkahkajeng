@@ -1048,20 +1048,19 @@ app.use((err: any, req: any, res: any, next: any) => {
   next(err);
 });
 
+// Register API routes
+console.log(`[${SERVER_ID}] Registering API routes at /api`);
+app.use("/api", (req, res, next) => {
+  res.setHeader('X-Backend-Server', SERVER_ID);
+  res.setHeader('X-API-Request', 'true');
+  next();
+}, apiRouter);
+
 async function startServer() {
   console.log(`[${SERVER_ID}] Starting server...`);
 
   // Ensure DB init is started
   initDB().catch(err => console.error("DB Init Error:", err));
-
-  // Register API routes BEFORE Vite
-  console.log(`[${SERVER_ID}] Registering API routes at /api`);
-  app.use("/api", (req, res, next) => {
-    console.log(`[${SERVER_ID}] API Middleware hit: ${req.method} ${req.url}`);
-    res.setHeader('X-Backend-Server', SERVER_ID);
-    res.setHeader('X-API-Request', 'true');
-    next();
-  }, apiRouter);
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
