@@ -163,7 +163,6 @@ export async function initDB() {
         }
       }
     }
-    }
 
     connection.release();
     dbConnected = true;
