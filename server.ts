@@ -102,11 +102,14 @@ export async function initDB() {
       await connection.query(`ALTER TABLE sales_items ADD COLUMN logs_deducted INT DEFAULT 1`);
     } catch (e) { /* ignore */ }
     await connection.query(`CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL, role ENUM('owner', 'mandor') NOT NULL, full_name VARCHAR(100), email VARCHAR(255) UNIQUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-    // Tambahkan kolom email jika belum ada
+    // Tambahkan kolom email jika belum ada (pecah jadi 2 langkah untuk TiDB)
     const [columns]: any = await connection.query(`SHOW COLUMNS FROM users LIKE 'email'`);
     if (columns.length === 0) {
       console.log(`[${SERVER_ID}] ℹ️ Menambahkan kolom email ke tabel users...`);
-      await connection.query(`ALTER TABLE users ADD COLUMN email VARCHAR(255) UNIQUE`);
+      await connection.query(`ALTER TABLE users ADD COLUMN email VARCHAR(255)`);
+      try {
+        await connection.query(`ALTER TABLE users ADD UNIQUE INDEX idx_user_email (email)`);
+      } catch (e) { /* ignore if index exists */ }
     }
 
     await connection.query(`CREATE TABLE IF NOT EXISTS password_resets (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL, token VARCHAR(255) NOT NULL, expires_at TIMESTAMP NOT NULL, INDEX(email), INDEX(token))`);
