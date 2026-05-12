@@ -32,11 +32,10 @@ import UserManagementView from './components/UserManagementView';
 import ProfileView from './components/ProfileView';
 import Login from './components/Login';
 import ForgotPasswordView from './components/ForgotPasswordView';
-import ResetPasswordView from './components/ResetPasswordView';
 import ConfirmationModal from './components/ConfirmationModal';
 import { cn } from './lib/utils';
 
-type ViewType = 'dashboard' | 'purchase' | 'inventory' | 'sales' | 'reports' | 'suppliers' | 'customers' | 'expenses' | 'audit-logs' | 'users' | 'profile' | 'forgot-password' | 'reset-password';
+type ViewType = 'dashboard' | 'purchase' | 'inventory' | 'sales' | 'reports' | 'suppliers' | 'customers' | 'expenses' | 'audit-logs' | 'users' | 'profile' | 'forgot-password';
 
 export default function App() {
   const [activeView, setActiveView] = useState<ViewType>('dashboard');
@@ -98,21 +97,6 @@ export default function App() {
       localStorage.setItem('logyard_theme', 'light');
     }
   }, [isDarkMode]);
-
-  // Handle URL parameters for password reset
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-    const email = params.get('email');
-
-    if (token && email) {
-      setResetData({ email, token });
-      setActiveView('reset-password');
-      // Clean up URL without refreshing
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
-    }
-  }, []);
 
   const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
     const token = auth.user?.token;
@@ -455,18 +439,6 @@ export default function App() {
   if (!auth.isAuthenticated) {
     if (activeView === 'forgot-password') {
       return <ForgotPasswordView onBack={() => setActiveView('dashboard')} />;
-    }
-    if (activeView === 'reset-password' && resetData) {
-      return (
-        <ResetPasswordView 
-          email={resetData.email} 
-          token={resetData.token} 
-          onSuccess={() => {
-            setResetData(null);
-            setActiveView('dashboard');
-          }} 
-        />
-      );
     }
     return <Login onLogin={handleLogin} onForgotPassword={() => setActiveView('forgot-password')} />;
   }

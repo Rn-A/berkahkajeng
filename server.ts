@@ -134,66 +134,32 @@ export async function initDB() {
       mandor: "mandor123"
     };
 
-    if (existingUsers.length === 0) {
-      // No users at all — create fresh with proper hashes
-      const ownerPass = await bcrypt.hash("admin123", 10);
-      const mandorPass = await bcrypt.hash("mandor123", 10);
-      await connection.query(
-        `INSERT INTO users (username, password, role, full_name) VALUES ('owner', ?, 'owner', 'Pemilik Pangkalan'), ('mandor', ?, 'mandor', 'Mandor Lapangan')`,
-        [ownerPass, mandorPass]
-      );
-      console.log(`[${SERVER_ID}] ✅ Default users created with hashed passwords.`);
-    } else {
-      // Users exist — check & repair each one
-      for (const user of existingUsers) {
-        const defaultPwd = defaultPasswords[user.username];
-        if (!defaultPwd) continue;
+    // Ensure default users exist
+    const defaultUsers = [
+      { username: 'owner', role: 'owner', full_name: 'Pemilik Pangkalan', password: 'admin123' },
+      { username: 'mandor', role: 'mandor', full_name: 'Mandor Lapangan', password: 'mandor123' }
+    ];
 
-        let needsReset = false;
-
-        // Case 1: Plain-text password stored directly
-        if (user.password === defaultPwd) {
-          needsReset = true;
-          console.log(`[${SERVER_ID}] ⚠️  Detected plain-text password for "${user.username}". Fixing...`);
-        }
-
-        // Case 2: Invalid/fake bcrypt hash (bcrypt.compare throws or returns false for ALL known passwords)
-        if (!needsReset) {
-          try {
-            const isValidHash = user.password.startsWith('$2a$') || user.password.startsWith('$2b$');
-            if (isValidHash) {
-              const matches = await bcrypt.compare(defaultPwd, user.password);
-              if (!matches) {
-                // Could be a wrong/fake hash from database.sql placeholder
-                // Try to verify it's truly invalid by checking hash format validity
-                const testHash = await bcrypt.hash("testonly", 10);
-                const isRealBcrypt = testHash.length === user.password.length && user.password.length === 60;
-                // If hash is the right length but wrong password, could be intentionally different — leave it
-                // But if repetitive pattern detected (fake hash), reset it
-                const isFakeHash = /(\$[a-zA-Z0-9.]{2,4}){5,}/.test(user.password.substring(7));
-                if (isFakeHash) {
-                  needsReset = true;
-                  console.log(`[${SERVER_ID}] ⚠️  Detected fake/invalid bcrypt hash for "${user.username}". Resetting to default...`);
-                }
-              }
-            } else {
-              // Not bcrypt format at all
-              needsReset = true;
-              console.log(`[${SERVER_ID}] ⚠️  Non-bcrypt password detected for "${user.username}". Fixing...`);
-            }
-          } catch (e) {
-            // bcrypt threw — hash is invalid
-            needsReset = true;
-            console.log(`[${SERVER_ID}] ⚠️  bcrypt error for "${user.username}". Resetting password...`);
-          }
-        }
-
-        if (needsReset) {
-          const hashed = await bcrypt.hash(defaultPwd, 10);
+    for (const defUser of defaultUsers) {
+      const [rows]: any = await connection.query("SELECT * FROM users WHERE username = ?", [defUser.username]);
+      if (rows.length === 0) {
+        // Create if missing
+        const hashed = await bcrypt.hash(defUser.password, 10);
+        await connection.query(
+          "INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)",
+          [defUser.username, hashed, defUser.role, defUser.full_name]
+        );
+        console.log(`[${SERVER_ID}] ✅ Default user created: ${defUser.username}`);
+      } else {
+        // Repair if exists but password is plain text
+        const user = rows[0];
+        if (user.password === defUser.password) {
+          const hashed = await bcrypt.hash(defUser.password, 10);
           await connection.query("UPDATE users SET password = ? WHERE id = ?", [hashed, user.id]);
-          console.log(`[${SERVER_ID}] ✅ Password for "${user.username}" has been fixed. Default: ${defaultPwd}`);
+          console.log(`[${SERVER_ID}] ⚠️  Fixed plain-text password for "${user.username}"`);
         }
       }
+    }
     }
 
     connection.release();
@@ -407,32 +373,27 @@ apiRouter.post("/forgot-password", async (req, res) => {
         return res.json({ message: "Jika email terdaftar, instruksi reset akan dikirim." });
       }
 
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 3600000); // 1 jam
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 600000); // 10 menit
 
       await pool.query("DELETE FROM password_resets WHERE email = ?", [email]);
-      await pool.query("INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)", [email, token, expiresAt]);
-
-      const resetLink = `${process.env.ALLOWED_ORIGIN}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+      await pool.query("INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)", [email, otp, expiresAt]);
       
       const mailOptions = {
         from: process.env.SMTP_FROM || '"Berkah Kajeng" <no-reply@berkahkanjeng.com>',
         to: email,
-        subject: "Reset Kata Sandi - Berkah Kajeng",
+        subject: "Kode OTP Reset Kata Sandi - Berkah Kajeng",
         html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px;">
-            <h2 style="color: #2563eb;">Reset Kata Sandi</h2>
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; text-align: center;">
+            <h2 style="color: #2563eb;">Kode Keamanan Anda</h2>
             <p>Halo,</p>
-            <p>Kami menerima permintaan untuk mereset kata sandi akun Berkah Kajeng Anda.</p>
-            <p>Silakan klik tombol di bawah ini untuk mengganti kata sandi Anda. Link ini akan kedaluwarsa dalam 1 jam.</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${resetLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Kata Sandi</a>
+            <p>Gunakan kode OTP di bawah ini untuk mereset kata sandi akun Berkah Kajeng Anda:</p>
+            <div style="background-color: #f3f4f6; padding: 20px; border-radius: 10px; margin: 20px 0;">
+              <h1 style="letter-spacing: 10px; font-size: 40px; margin: 0; color: #111827;">${otp}</h1>
             </div>
-            <p>Jika tombol di atas tidak berfungsi, Anda bisa menyalin link berikut ke browser Anda:</p>
-            <p style="word-break: break-all; color: #666;">${resetLink}</p>
-            <p>Jika Anda tidak merasa melakukan permintaan ini, silakan abaikan email ini.</p>
+            <p style="color: #666; font-size: 14px;">Kode ini hanya berlaku selama 10 menit. Jangan berikan kode ini kepada siapapun.</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="font-size: 12px; color: #888;">Ini adalah email otomatis, mohon tidak membalas email ini.</p>
+            <p style="font-size: 12px; color: #888;">Ini adalah email otomatis dari sistem Berkah Kajeng.</p>
           </div>
         `
       };
@@ -458,15 +419,15 @@ apiRouter.post("/reset-password", async (req, res) => {
       const [resets]: any = await pool.query("SELECT * FROM password_resets WHERE email = ? AND token = ? AND expires_at > NOW()", [email, token]);
       if (resets.length === 0) {
         return res.status(400).json({ error: "Token tidak valid atau sudah kedaluwarsa" });
-    const [resets]: any = await pool.query("SELECT * FROM password_resets WHERE email = ? AND token = ? AND expires_at > NOW()", [email, token]);
-    if (resets.length === 0) {
-      return res.status(400).json({ error: "Token tidak valid atau sudah kedaluwarsa" });
-    }
+      }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await pool.query("UPDATE users SET password = ? WHERE email = ?", [hashedPassword, email]);
-    await pool.query("DELETE FROM password_resets WHERE email = ?", [email]);
-    res.json({ message: "Kata sandi berhasil diperbarui. Silakan login kembali." });
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await pool.query("UPDATE users SET password = ? WHERE email = ?", [hashedPassword, email]);
+      await pool.query("DELETE FROM password_resets WHERE email = ?", [email]);
+      res.json({ message: "Kata sandi berhasil diperbarui. Silakan login kembali." });
+    } else {
+      res.status(503).json({ error: "Sistem database sedang menyiapkan koneksi. Silakan coba lagi." });
+    }
   } catch (error) {
     console.error("Reset Password Error:", error);
     res.status(500).json({ error: "Gagal memperbarui kata sandi" });
