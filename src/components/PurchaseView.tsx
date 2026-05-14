@@ -51,8 +51,9 @@ const calculateVolume = (diameterCm: number, lengthCm: number): number => {
   const lengthM = lengthCm / 100;
   const vol = 0.785 * Math.pow(diameterM, 2) * lengthM;
   
-  // Custom Rounding: <= 5 rounds down, > 5 rounds up (at 4th decimal)
-  const factor = 10000;
+  // Custom Rounding: 3 decimal places
+  // Rule: 4th decimal <= 5 rounds down, > 5 rounds up
+  const factor = 1000;
   const temp = vol * factor;
   const floor = Math.floor(temp);
   const decimal = temp - floor;
