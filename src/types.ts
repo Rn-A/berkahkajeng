@@ -75,6 +75,7 @@ export interface User {
   username: string;
   role: 'owner' | 'mandor';
   full_name: string;
+  email?: string;
   token: string;
 }
 

@@ -153,6 +153,8 @@ export default function PurchaseView({
   woodTypes,
   onAddWoodType,
   onDeleteWoodType,
+  onSaveSupplier,
+  onDeleteSupplier,
   userRole = 'mandor'
 }: PurchaseViewProps) {
   const [showHistory, setShowHistory] = useState(false);
