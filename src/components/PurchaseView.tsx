@@ -162,6 +162,7 @@ export default function PurchaseView({
   const [showSupplierManager, setShowSupplierManager] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
   const [supplierFormData, setSupplierFormData] = useState<Supplier>({ id: '', name: '', phone: '', address: '' });
+  const [isSupplierSaving, setIsSupplierSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [activeInputMode, setActiveInputMode] = useState<string | null>('manual');
@@ -431,15 +432,28 @@ export default function PurchaseView({
                 </div>
                 <div className="flex gap-2">
                   <button 
+                    disabled={isSupplierSaving}
                     onClick={async () => {
                       if (!supplierFormData.name) return;
-                      await onSaveSupplier({ ...supplierFormData, id: supplierFormData.id || crypto.randomUUID() });
-                      setSupplierFormData({ id: '', name: '', phone: '', address: '' });
+                      setIsSupplierSaving(true);
+                      try {
+                        await onSaveSupplier({ ...supplierFormData, id: supplierFormData.id || crypto.randomUUID() });
+                        setSupplierFormData({ id: '', name: '', phone: '', address: '' });
+                        alert('Penyetor berhasil disimpan!');
+                      } catch (error) {
+                        alert('Gagal menyimpan penyetor.');
+                      } finally {
+                        setIsSupplierSaving(false);
+                      }
                     }}
-                    className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-4 py-2 rounded-xl flex items-center gap-2 font-bold text-xs w-full justify-center"
+                    className={`bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-4 py-2 rounded-xl flex items-center gap-2 font-bold text-xs w-full justify-center transition-opacity ${isSupplierSaving ? 'opacity-50' : ''}`}
                   >
-                    <Plus size={16} />
-                    {supplierFormData.id ? 'Update' : 'Tambah'}
+                    {isSupplierSaving ? (
+                      <div className="w-4 h-4 border-2 border-zinc-400 border-t-zinc-900 dark:border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Plus size={16} />
+                    )}
+                    {isSupplierSaving ? 'Menyimpan...' : (supplierFormData.id ? 'Update' : 'Tambah')}
                   </button>
                   {supplierFormData.id && (
                     <button 
@@ -458,7 +472,12 @@ export default function PurchaseView({
                     <span className="text-sm font-medium dark:text-zinc-200">{s.name}</span>
                     <div className="flex gap-2">
                       <button onClick={() => setSupplierFormData(s)} className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-1.5 rounded-lg transition-colors"><Edit2 size={14} /></button>
-                      <button onClick={() => onDeleteSupplier(s.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                      <button onClick={async () => {
+                        if (confirm(`Apakah Anda yakin ingin menghapus penyetor "${s.name}"?`)) {
+                          await onDeleteSupplier(s.id);
+                          alert('Penyetor berhasil dihapus.');
+                        }
+                      }} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"><Trash2 size={14} /></button>
                     </div>
                   </div>
                 ))}
