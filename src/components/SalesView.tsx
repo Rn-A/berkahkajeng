@@ -41,7 +41,8 @@ const formatCurrency = (value: number) => {
 
 // Helper Terbilang
 const terbilang = (n: number): string => {
-  if (n < 0) return "Minus " + terbilang(-n);
+  n = Math.floor(n);
+  if (n < 0) return "Minus " + terbilang(Math.floor(-n));
   const words = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
   let res = "";
   if (n < 12) res = words[n];
