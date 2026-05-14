@@ -15,7 +15,9 @@ import {
   Search,
   AlertTriangle,
   ChevronLeft,
-  Edit2
+  Edit2,
+  Minus,
+  Plus as PlusIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -352,6 +354,45 @@ export default function PurchaseView({
 
     setActiveSet({ ...activeSet, categories: newCategories });
     setSelectedCategoryId(targetCat.id);
+  };
+
+  const removeLogByDiameter = (categoryId: string, diameter: number) => {
+    if (!activeSet) return;
+    const catIndex = activeSet.categories.findIndex(c => c.id === categoryId);
+    if (catIndex === -1) return;
+
+    const cat = activeSet.categories[catIndex];
+    const logIndex = cat.logs.findIndex(l => l.diameter === diameter);
+    if (logIndex === -1) return;
+
+    const newLogs = [...cat.logs];
+    newLogs.splice(logIndex, 1);
+
+    const newCategories = [...activeSet.categories];
+    newCategories[catIndex] = { ...cat, logs: newLogs };
+
+    setActiveSet({ ...activeSet, categories: newCategories });
+  };
+
+  const addLogByDiameter = (categoryId: string, diameter: number) => {
+    if (!activeSet) return;
+    const catIndex = activeSet.categories.findIndex(c => c.id === categoryId);
+    if (catIndex === -1) return;
+
+    const cat = activeSet.categories[catIndex];
+    const log: LogEntry = {
+      id: crypto.randomUUID(),
+      diameter,
+      volume: calculateVolume(diameter, cat.length || 200)
+    };
+
+    const newCategories = [...activeSet.categories];
+    newCategories[catIndex] = {
+      ...cat,
+      logs: [log, ...cat.logs]
+    };
+
+    setActiveSet({ ...activeSet, categories: newCategories });
   };
 
   const deleteLog = (categoryId: string, logId: string) => {
@@ -831,21 +872,49 @@ export default function PurchaseView({
                     </button>
                   )}
                 </div>
-                <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                  {activeCategory.logs.map((log, idx) => (
-                    <div key={log.id} className="flex items-center justify-between p-2.5 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-100 dark:border-zinc-800 group gap-2 overflow-hidden">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="text-[9px] font-mono text-zinc-400 shrink-0">#{activeCategory.logs.length - idx}</span>
-                        <span className="font-bold text-xs dark:text-white truncate">Ø {log.diameter} cm</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400">{log.volume.toFixed(4)} m³</span>
-                        <button onClick={() => deleteLog(activeCategory.id, log.id)} className="text-zinc-300 hover:text-red-500 transition-colors md:opacity-0 md:group-hover:opacity-100 ml-1">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+                  {(() => {
+                    const grouped = activeCategory.logs.reduce((acc, log) => {
+                      acc[log.diameter] = (acc[log.diameter] || 0) + 1;
+                      return acc;
+                    }, {} as Record<number, number>);
+
+                    return Object.entries(grouped)
+                      .sort(([a], [b]) => Number(a) - Number(b))
+                      .map(([diameter, count]) => {
+                        const diamNum = Number(diameter);
+                        const volPerBatang = calculateVolume(diamNum, activeCategory.length);
+                        return (
+                          <div key={diameter} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm transition-all hover:border-zinc-200 dark:hover:border-zinc-700">
+                            <div className="flex flex-col">
+                              <span className="font-black text-sm dark:text-white">Ø {diameter} cm</span>
+                              <span className="text-[10px] font-mono text-zinc-400">{(volPerBatang * count).toFixed(4)} m³</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                              <button 
+                                onClick={() => removeLogByDiameter(activeCategory.id, diamNum)}
+                                className="w-8 h-8 rounded-full border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all active:scale-90"
+                              >
+                                <Minus size={14} />
+                              </button>
+                              
+                              <div className="relative">
+                                <span className="font-bold text-sm dark:text-white min-w-[20px] text-center block">{count}</span>
+                                <div className="absolute -bottom-1 left-0 right-0 h-[1.5px] bg-zinc-300 dark:bg-zinc-700" />
+                              </div>
+                              
+                              <button 
+                                onClick={() => addLogByDiameter(activeCategory.id, diamNum)}
+                                className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-90"
+                              >
+                                <PlusIcon size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      });
+                  })()}
                 </div>
                 <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800 space-y-2.5 shrink-0">
                   <div className="flex justify-between items-center gap-2 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
