@@ -497,12 +497,7 @@ export default function PurchaseView({
                     <span className="text-sm font-medium dark:text-zinc-200">{s.name}</span>
                     <div className="flex gap-2">
                       <button onClick={() => setSupplierFormData(s)} className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-1.5 rounded-lg transition-colors"><Edit2 size={14} /></button>
-                      <button onClick={async () => {
-                        if (confirm(`Apakah Anda yakin ingin menghapus penyetor "${s.name}"?`)) {
-                          await onDeleteSupplier(s.id);
-                          showToast('Penyetor berhasil dihapus.');
-                        }
-                      }} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                      <button onClick={() => onDeleteSupplier(s.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"><Trash2 size={14} /></button>
                     </div>
                   </div>
                 ))}
