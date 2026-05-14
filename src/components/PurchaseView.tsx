@@ -168,6 +168,7 @@ export default function PurchaseView({
   const [activeInputMode, setActiveInputMode] = useState<string | null>('manual');
   const [manualDiameter, setManualDiameter] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
@@ -175,6 +176,11 @@ export default function PurchaseView({
   const [sessionWoodType, setSessionWoodType] = useState('Jati');
   const [sessionLength, setSessionLength] = useState<number>(200);
   const [sessionCondition, setSessionCondition] = useState<WoodCondition>('Super');
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const filteredHistory = history.filter(set =>
     set.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -366,7 +372,26 @@ export default function PurchaseView({
   };
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row overflow-hidden h-full">
+    <div className="flex-1 flex flex-col lg:flex-row overflow-hidden h-full relative">
+      {/* Custom Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, x: '-50%' }}
+            animate={{ opacity: 1, y: 20, x: '-50%' }}
+            exit={{ opacity: 0, y: -50, x: '-50%' }}
+            className={cn(
+              "fixed top-4 left-1/2 z-[200] px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border font-bold text-sm",
+              toast.type === 'success' 
+                ? "bg-zinc-900 text-white border-white/10 dark:bg-white dark:text-zinc-900" 
+                : "bg-red-500 text-white border-red-400"
+            )}
+          >
+            {toast.type === 'success' ? <PlusCircle size={20} /> : <AlertTriangle size={20} />}
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Type Management Modal */}
       {showTypeManager && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
@@ -439,9 +464,9 @@ export default function PurchaseView({
                       try {
                         await onSaveSupplier({ ...supplierFormData, id: supplierFormData.id || crypto.randomUUID() });
                         setSupplierFormData({ id: '', name: '', phone: '', address: '' });
-                        alert('Penyetor berhasil disimpan!');
+                        showToast('Penyetor berhasil disimpan!');
                       } catch (error) {
-                        alert('Gagal menyimpan penyetor.');
+                        showToast('Gagal menyimpan penyetor.', 'error');
                       } finally {
                         setIsSupplierSaving(false);
                       }
@@ -475,7 +500,7 @@ export default function PurchaseView({
                       <button onClick={async () => {
                         if (confirm(`Apakah Anda yakin ingin menghapus penyetor "${s.name}"?`)) {
                           await onDeleteSupplier(s.id);
-                          alert('Penyetor berhasil dihapus.');
+                          showToast('Penyetor berhasil dihapus.');
                         }
                       }} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"><Trash2 size={14} /></button>
                     </div>
