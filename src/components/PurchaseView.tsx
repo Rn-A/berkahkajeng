@@ -50,7 +50,18 @@ const calculateVolume = (diameterCm: number, lengthCm: number): number => {
   const diameterM = diameterCm / 100;
   const lengthM = lengthCm / 100;
   const vol = 0.785 * Math.pow(diameterM, 2) * lengthM;
-  return Math.round(vol * 10000) / 10000;
+  
+  // Custom Rounding: <= 5 rounds down, > 5 rounds up (at 4th decimal)
+  const factor = 10000;
+  const temp = vol * factor;
+  const floor = Math.floor(temp);
+  const decimal = temp - floor;
+  
+  if (decimal <= 0.5) {
+    return floor / factor;
+  } else {
+    return (floor + 1) / factor;
+  }
 };
 
 const terbilang = (n: number): string => {
