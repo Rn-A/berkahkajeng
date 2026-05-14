@@ -683,6 +683,8 @@ export default function App() {
                     woodTypes={woodTypes}
                     onAddWoodType={handleAddWoodType}
                     onDeleteWoodType={handleDeleteWoodType}
+                    onSaveSupplier={handleSaveSupplier}
+                    onDeleteSupplier={handleDeleteSupplier}
                     userRole={auth.user?.role || 'mandor'}
                   />
                 )}

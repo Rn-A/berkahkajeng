@@ -14,7 +14,8 @@ import {
   Download,
   Search,
   AlertTriangle,
-  ChevronLeft
+  ChevronLeft,
+  Edit2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -39,6 +40,8 @@ interface PurchaseViewProps {
   woodTypes: { name: string }[];
   onAddWoodType: (name: string) => Promise<void>;
   onDeleteWoodType: (name: string) => Promise<void>;
+  onSaveSupplier: (supplier: Supplier) => Promise<void>;
+  onDeleteSupplier: (id: string) => Promise<void>;
   userRole?: string;
 }
 
@@ -154,7 +157,9 @@ export default function PurchaseView({
 }: PurchaseViewProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [showTypeManager, setShowTypeManager] = useState(false);
+  const [showSupplierManager, setShowSupplierManager] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
+  const [supplierFormData, setSupplierFormData] = useState<Supplier>({ id: '', name: '', phone: '', address: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [activeInputMode, setActiveInputMode] = useState<string | null>('manual');
@@ -388,6 +393,79 @@ export default function PurchaseView({
         </div>
       )}
 
+      {/* Supplier Management Modal */}
+      <AnimatePresence>
+        {showSupplierManager && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+              onClick={() => setShowSupplierManager(false)} 
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-sm p-6 overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold dark:text-white">Kelola Penyetor</h3>
+                <button onClick={() => setShowSupplierManager(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+                  <X size={20} className="dark:text-zinc-400" />
+                </button>
+              </div>
+              
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Nama Penyetor</label>
+                  <input 
+                    className="input-field w-full"
+                    placeholder="Nama..."
+                    value={supplierFormData.name}
+                    onChange={(e) => setSupplierFormData({ ...supplierFormData, name: e.target.value })}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={async () => {
+                      if (!supplierFormData.name) return;
+                      await onSaveSupplier({ ...supplierFormData, id: supplierFormData.id || crypto.randomUUID() });
+                      setSupplierFormData({ id: '', name: '', phone: '', address: '' });
+                    }}
+                    className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-4 py-2 rounded-xl flex items-center gap-2 font-bold text-xs w-full justify-center"
+                  >
+                    <Plus size={16} />
+                    {supplierFormData.id ? 'Update' : 'Tambah'}
+                  </button>
+                  {supplierFormData.id && (
+                    <button 
+                      onClick={() => setSupplierFormData({ id: '', name: '', phone: '', address: '' })}
+                      className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-4 py-2 rounded-xl text-xs font-bold"
+                    >
+                      Batal
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
+                {suppliers.filter(s => s.name !== 'Umum').map(s => (
+                  <div key={s.id} className="flex justify-between items-center p-3 border rounded-xl bg-zinc-50 dark:bg-zinc-800/50 dark:border-zinc-700">
+                    <span className="text-sm font-medium dark:text-zinc-200">{s.name}</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSupplierFormData(s)} className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-1.5 rounded-lg transition-colors"><Edit2 size={14} /></button>
+                      <button onClick={() => onDeleteSupplier(s.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Left Sidebar: Set Info & Categories */}
       <div className="w-full lg:w-72 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col overflow-hidden print:hidden shrink-0">
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 space-y-4">
@@ -410,6 +488,13 @@ export default function PurchaseView({
                 {suppliers.map(s => <option key={s.id} value={s.name} className="dark:bg-zinc-900">{s.name}</option>)}
                 <option value="Umum" className="dark:bg-zinc-900">Umum</option>
               </select>
+              <button 
+                onClick={() => setShowSupplierManager(true)}
+                className="mt-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 uppercase tracking-widest flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg transition-all active:scale-95"
+              >
+                <PlusCircle size={14} />
+                Kelola Penyetor
+              </button>
             </div>
             <div>
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Tanggal</label>
