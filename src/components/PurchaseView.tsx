@@ -49,7 +49,7 @@ const calculateVolume = (diameterCm: number, lengthCm: number): number => {
   if (diameterCm < 10) return 0;
   const diameterM = diameterCm / 100;
   const lengthM = lengthCm / 100;
-  return 0.7854 * Math.pow(diameterM, 2) * lengthM;
+  return 0.785 * Math.pow(diameterM, 2) * lengthM;
 };
 
 const terbilang = (n: number): string => {
