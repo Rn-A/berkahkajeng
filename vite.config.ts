@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      rollupOptions: {}
+      rollupOptions: {},
       chunkSizeWarningLimit: 1000,
       minify: 'esbuild',
     },
