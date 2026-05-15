@@ -628,7 +628,13 @@ export default function PurchaseView({
             {activeSet?.categories.map((cat) => (
               <div key={cat.id} className="group relative">
                 <button
-                  onClick={() => setSelectedCategoryId(cat.id)}
+                  onClick={() => {
+                    setSelectedCategoryId(cat.id);
+                    // Sync session states with the selected category
+                    setSessionWoodType(cat.woodType);
+                    setSessionLength(cat.length);
+                    setSessionCondition(cat.condition);
+                  }}
                   className={`w-full text-left p-3 rounded-xl border transition-all pr-10 ${selectedCategoryId === cat.id
                     ? 'border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-lg shadow-zinc-200 dark:shadow-none'
                     : 'border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 hover:border-zinc-300 dark:hover:border-zinc-700'
@@ -1165,7 +1171,23 @@ export default function PurchaseView({
                         <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-2">{formatCurrency(setTotals.price)}</p>
                       </div>
                       <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                        <button onClick={() => { setActiveSet(set); setShowHistory(false); }} className="btn-secondary text-xs py-2 px-4">Buka Kembali</button>
+                        <button 
+                          onClick={() => { 
+                            setActiveSet(set); 
+                            setShowHistory(false);
+                            if (set.categories.length > 0) {
+                              const firstCat = set.categories[0];
+                              setSelectedCategoryId(firstCat.id);
+                              // Sync session states when opening from history
+                              setSessionWoodType(firstCat.woodType);
+                              setSessionLength(firstCat.length);
+                              setSessionCondition(firstCat.condition);
+                            }
+                          }} 
+                          className="btn-secondary text-xs py-2 px-4"
+                        >
+                          Buka Kembali
+                        </button>
                         <button onClick={() => onDelete(set.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-all"><Trash2 size={18} /></button>
                       </div>
                     </div>
