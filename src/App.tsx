@@ -188,8 +188,11 @@ export default function App() {
     return fetch(url, { ...options, headers });
   }, [auth.user?.token]);
 
+  const isFetchingRef = React.useRef(false);
   const fetchData = useCallback(async (viewArg?: ViewType) => {
-    if (!viewArg) return;
+    if (!viewArg || isFetchingRef.current) return;
+    
+    isFetchingRef.current = true;
     const view = viewArg;
     
     try {
@@ -199,7 +202,6 @@ export default function App() {
           const data = await res.json();
           setDashboardData(data);
           
-          // Background fetching - strictly separated
           setTimeout(async () => {
             try {
               const [invR, salesR, purchR, expR] = await Promise.all([
@@ -209,10 +211,10 @@ export default function App() {
                 fetchWithAuth('/api/expenses')
               ]);
               
-              if (invR?.ok) { const d = await invR.json(); setInventory(d); }
-              if (salesR?.ok) { const d = await salesR.json(); setSalesHistory(d); }
-              if (purchR?.ok) { const d = await purchR.json(); setHistory(d); }
-              if (expR?.ok) { const d = await expR.json(); setExpenses(d); }
+              if (invR?.ok) { setInventory(await invR.json()); }
+              if (salesR?.ok) { setSalesHistory(await salesR.json()); }
+              if (purchR?.ok) { setHistory(await purchR.json()); }
+              if (expR?.ok) { setExpenses(await expR.json()); }
             } catch (e) {
               console.error("Background fetch failed", e);
             }
@@ -272,6 +274,7 @@ export default function App() {
     } finally {
       setIsInitialLoad(false);
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
   }, [fetchWithAuth, auth.user?.role, handleLogout]);
 
@@ -281,7 +284,7 @@ export default function App() {
       lastFetchedView.current = activeView;
       fetchData(activeView);
     }
-  }, [auth.isAuthenticated, activeView]);
+  }, [auth.isAuthenticated, activeView, fetchData]);
 
   useEffect(() => {
     if (auth.isAuthenticated && activeView === 'purchase' && !activeSet) {

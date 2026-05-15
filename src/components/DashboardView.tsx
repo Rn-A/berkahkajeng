@@ -209,8 +209,8 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
 
     const sortedLabels = Array.from(allLabels).sort((a, b) => labelTime[a] - labelTime[b]);
 
-    // Calculate actual current physical stock
-    const actualCurrentStock = inventory.reduce((sum, item) => sum + Number(item.total_volume || 0), 0);
+    // Calculate actual current physical stock with 3-decimal precision
+    const actualCurrentStock = Number(inventory.reduce((sum, item) => sum + Number(item.total_volume || 0), 0).toFixed(3));
 
     // Backward calculation: stock_yesterday = stock_today - purchases_today + sales_today
     // We traverse from the newest date to the oldest so the newest date perfectly matches actualCurrentStock.
@@ -227,17 +227,17 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
       
       results[i] = {
         label: l,
-        purchase_volume: pVol,
-        purchase_value: pVal,
-        sales_volume: sVol,
-        sales_revenue: sRev,
-        expense_amount: eAmt,
+        purchase_volume: Number(pVol.toFixed(3)),
+        purchase_value: roundPrice(pVal),
+        sales_volume: Number(sVol.toFixed(3)),
+        sales_revenue: roundPrice(sRev),
+        expense_amount: roundPrice(eAmt),
         net_cashflow: roundPrice(sRev - pVal - eAmt),
-        stock_volume: currentStock < 0 ? 0 : currentStock
+        stock_volume: Number((currentStock < 0 ? 0 : currentStock).toFixed(3))
       };
 
       // Calculate the stock for the PREVIOUS step in time
-      currentStock = currentStock - pVol + sVol;
+      currentStock = Number((currentStock - pVol + sVol).toFixed(3));
     }
 
     return results;
@@ -284,13 +284,13 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
     const currentSales = salesHistory.filter(s => isWithinPeriod(s.date));
     const currentExpenses = expenses.filter(e => isWithinPeriod(e.date));
 
-    const totalPurchaseVolume = currentPurchases.reduce((sum, p) => sum + (Number(p.total_volume) || 0), 0);
+    const totalPurchaseVolume = Number(currentPurchases.reduce((sum, p) => sum + (Number(p.total_volume) || 0), 0).toFixed(3));
     const totalPurchaseValue = roundPrice(currentPurchases.reduce((sum, p) => sum + (Number(p.total_value) || 0), 0));
     
-    const totalSalesVolume = currentSales.reduce((sum, s) => {
+    const totalSalesVolume = Number(currentSales.reduce((sum, s) => {
       const vol = s.items?.reduce((v, item) => v + Number(item.volume || 0), 0) || 0;
       return sum + vol;
-    }, 0);
+    }, 0).toFixed(3));
     const totalSalesRevenue = roundPrice(currentSales.reduce((sum, s) => sum + (Number(s.total_revenue) || 0), 0));
     const totalSalesProfit = roundPrice(currentSales.reduce((sum, s) => sum + (Number(s.total_profit) || 0), 0));
     
