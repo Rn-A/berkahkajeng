@@ -22,20 +22,20 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WoodSet, InventoryItem, Sale, DashboardData, User, AuthState, Supplier, Customer, Expense, AuditLog } from './types';
-import DashboardView from './components/DashboardView';
-import PurchaseView from './components/PurchaseView';
-import InventoryView from './components/InventoryView';
-import SalesView from './components/SalesView';
-import ReportsView from './components/ReportsView';
-import SuppliersView from './components/SuppliersView';
-import CustomersView from './components/CustomersView';
-import ExpensesView from './components/ExpensesView';
-import AuditLogsView from './components/AuditLogsView.tsx';
-import UserManagementView from './components/UserManagementView';
-import ProfileView from './components/ProfileView';
-import Login from './components/Login';
-import ForgotPasswordView from './components/ForgotPasswordView';
-import ConfirmationModal from './components/ConfirmationModal';
+const DashboardView = React.lazy(() => import('./components/DashboardView'));
+const PurchaseView = React.lazy(() => import('./components/PurchaseView'));
+const InventoryView = React.lazy(() => import('./components/InventoryView'));
+const SalesView = React.lazy(() => import('./components/SalesView'));
+const ReportsView = React.lazy(() => import('./components/ReportsView'));
+const SuppliersView = React.lazy(() => import('./components/SuppliersView'));
+const CustomersView = React.lazy(() => import('./components/CustomersView'));
+const ExpensesView = React.lazy(() => import('./components/ExpensesView'));
+const AuditLogsView = React.lazy(() => import('./components/AuditLogsView.tsx'));
+const UserManagementView = React.lazy(() => import('./components/UserManagementView'));
+const ProfileView = React.lazy(() => import('./components/ProfileView'));
+const Login = React.lazy(() => import('./components/Login'));
+const ForgotPasswordView = React.lazy(() => import('./components/ForgotPasswordView'));
+const ConfirmationModal = React.lazy(() => import('./components/ConfirmationModal'));
 import { cn } from './lib/utils';
 
 type ViewType = 'dashboard' | 'purchase' | 'inventory' | 'sales' | 'reports' | 'suppliers' | 'customers' | 'expenses' | 'audit-logs' | 'users' | 'profile' | 'forgot-password';
@@ -462,10 +462,19 @@ export default function App() {
   ].filter(item => item.roles.includes(auth.user?.role || ''));
 
   if (!auth.isAuthenticated) {
-    if (activeView === 'forgot-password') {
-      return <ForgotPasswordView onBack={() => setActiveView('dashboard')} />;
-    }
-    return <Login onLogin={handleLogin} onForgotPassword={() => setActiveView('forgot-password')} />;
+    return (
+      <React.Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+          <div className="w-12 h-12 border-4 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-white rounded-full animate-spin"></div>
+        </div>
+      }>
+        {activeView === 'forgot-password' ? (
+          <ForgotPasswordView onBack={() => setActiveView('dashboard')} />
+        ) : (
+          <Login onLogin={handleLogin} onForgotPassword={() => setActiveView('forgot-password')} />
+        )}
+      </React.Suspense>
+    );
   }
 
   return (
@@ -677,15 +686,23 @@ export default function App() {
               </div>
             </div>
           )}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeView}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="h-full"
-            >
+          <React.Suspense fallback={
+            <div className="flex-1 flex items-center justify-center p-12">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-white rounded-full animate-spin"></div>
+                <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest animate-pulse">Menyiapkan Halaman...</p>
+              </div>
+            </div>
+          }>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeView}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="h-full"
+              >
               <div className="p-4 md:p-8">
                 {activeView === 'dashboard' && <DashboardView
                   data={dashboardData}
@@ -774,6 +791,7 @@ export default function App() {
               </div>
             </motion.div>
           </AnimatePresence>
+          </React.Suspense>
         </div>
       </main>
 
