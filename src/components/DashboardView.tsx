@@ -1,3 +1,4 @@
+import React, { useMemo, useState } from 'react';
 // Recharts components deferred for better initial render performance
 const XAxis = React.lazy(() => import('recharts').then(m => ({ default: m.XAxis })));
 const YAxis = React.lazy(() => import('recharts').then(m => ({ default: m.YAxis })));
