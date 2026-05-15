@@ -189,18 +189,17 @@ export default function App() {
   }, [auth.user?.token]);
 
   const fetchData = useCallback(async (viewArg?: ViewType) => {
-    // Determine view from argument; if called without args (e.g. from handlers), 
-    // it will effectively do nothing or we can use a ref for current view.
-    // For safety, handlers should pass the view they want to refresh.
     if (!viewArg) return;
     const view = viewArg;
+    
     try {
       if (view === 'dashboard') {
         const res = await fetchWithAuth('/api/dashboard');
-        if (res && res.ok) {
+        if (res?.ok) {
           const data = await res.json();
           setDashboardData(data);
           
+          // Background fetching - strictly separated
           setTimeout(async () => {
             try {
               const [invR, salesR, purchR, expR] = await Promise.all([
@@ -210,69 +209,79 @@ export default function App() {
                 fetchWithAuth('/api/expenses')
               ]);
               
-              if (invR?.ok) setInventory(await invR.json());
-              if (salesR?.ok) setSalesHistory(await salesR.json());
-              if (purchR?.ok) setHistory(await purchR.json());
-              if (expR?.ok) setExpenses(await expR.json());
+              if (invR?.ok) { const d = await invR.json(); setInventory(d); }
+              if (salesR?.ok) { const d = await salesR.json(); setSalesHistory(d); }
+              if (purchR?.ok) { const d = await purchR.json(); setHistory(d); }
+              if (expR?.ok) { const d = await expR.json(); setExpenses(d); }
             } catch (e) {
-              console.error("BG load error:", e);
+              console.error("Background fetch failed", e);
             }
           }, 1000);
-          return;
-        } else if (res && (res.status === 401 || res.status === 403)) {
+        } else if (res?.status === 401 || res?.status === 403) {
           handleLogout();
-          return;
         }
-      }
-
-      if (view === 'purchase') {
-        const [setsR, suppR, woodR] = await Promise.all([
-          fetchWithAuth('/api/sets'),
-          fetchWithAuth('/api/suppliers'),
-          fetchWithAuth('/api/wood-types')
-        ]);
-        if (setsR?.ok) setHistory(await setsR.json());
-        if (suppR?.ok) setSuppliers(await suppR.json());
-        if (woodR?.ok) setWoodTypes(await woodR.json());
-      } else if (view === 'inventory') {
-        const res = await fetchWithAuth('/api/inventory');
-        if (res?.ok) setInventory(await res.json());
-      } else if (view === 'sales') {
-        const [salesR, custR, invR] = await Promise.all([
-          fetchWithAuth('/api/sales'),
-          fetchWithAuth('/api/customers'),
-          fetchWithAuth('/api/inventory')
-        ]);
-        if (salesR?.ok) setSalesHistory(await salesR.json());
-        if (custR?.ok) setCustomers(await custR.json());
-        if (invR?.ok) setInventory(await invR.json());
-      } else if (view === 'expenses') {
-        const res = await fetchWithAuth('/api/expenses');
-        if (res?.ok) setExpenses(await res.json());
-      } else if (view === 'suppliers') {
-        const res = await fetchWithAuth('/api/suppliers');
-        if (res?.ok) setSuppliers(await res.json());
-      } else if (view === 'customers') {
-        const res = await fetchWithAuth('/api/customers');
-        if (res?.ok) setCustomers(await res.json());
-      } else if (view === 'audit-logs' && auth.user?.role === 'owner') {
-        const res = await fetchWithAuth('/api/audit-logs');
-        if (res?.ok) setAuditLogs(await res.json());
+      } else {
+        // Handle other views
+        switch(view) {
+          case 'purchase':
+            const [setsR, suppR, woodR] = await Promise.all([
+              fetchWithAuth('/api/sets'),
+              fetchWithAuth('/api/suppliers'),
+              fetchWithAuth('/api/wood-types')
+            ]);
+            if (setsR?.ok) setHistory(await setsR.json());
+            if (suppR?.ok) setSuppliers(await suppR.json());
+            if (woodR?.ok) setWoodTypes(await woodR.json());
+            break;
+          case 'inventory':
+            const invR = await fetchWithAuth('/api/inventory');
+            if (invR?.ok) setInventory(await invR.json());
+            break;
+          case 'sales':
+            const [sR, cR, iR] = await Promise.all([
+              fetchWithAuth('/api/sales'),
+              fetchWithAuth('/api/customers'),
+              fetchWithAuth('/api/inventory')
+            ]);
+            if (sR?.ok) setSalesHistory(await sR.json());
+            if (cR?.ok) setCustomers(await cR.json());
+            if (iR?.ok) setInventory(await iR.json());
+            break;
+          case 'expenses':
+            const exR = await fetchWithAuth('/api/expenses');
+            if (exR?.ok) setExpenses(await exR.json());
+            break;
+          case 'suppliers':
+            const spR = await fetchWithAuth('/api/suppliers');
+            if (spR?.ok) setSuppliers(await spR.json());
+            break;
+          case 'customers':
+            const csR = await fetchWithAuth('/api/customers');
+            if (csR?.ok) setCustomers(await csR.json());
+            break;
+          case 'audit-logs':
+            if (auth.user?.role === 'owner') {
+              const auR = await fetchWithAuth('/api/audit-logs');
+              if (auR?.ok) setAuditLogs(await auR.json());
+            }
+            break;
+        }
       }
     } catch (error) {
       console.error("Fetch error:", error);
     } finally {
       setIsInitialLoad(false);
+      setIsLoading(false);
     }
   }, [fetchWithAuth, auth.user?.role, handleLogout]);
 
   const lastFetchedView = React.useRef<string | null>(null);
   useEffect(() => {
     if (auth.isAuthenticated && lastFetchedView.current !== activeView) {
-      fetchData(activeView);
       lastFetchedView.current = activeView;
+      fetchData(activeView);
     }
-  }, [fetchData, auth.isAuthenticated, activeView]);
+  }, [auth.isAuthenticated, activeView]);
 
   useEffect(() => {
     if (auth.isAuthenticated && activeView === 'purchase' && !activeSet) {
