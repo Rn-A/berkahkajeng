@@ -178,7 +178,11 @@ export default function App() {
   }, [auth.user?.token]);
 
   const fetchData = useCallback(async (viewArg?: ViewType) => {
-    const view = viewArg || activeView;
+    // Determine view from argument; if called without args (e.g. from handlers), 
+    // it will effectively do nothing or we can use a ref for current view.
+    // For safety, handlers should pass the view they want to refresh.
+    if (!viewArg) return;
+    const view = viewArg;
     try {
       if (view === 'dashboard') {
         const res = await fetchWithAuth('/api/dashboard');
@@ -249,7 +253,7 @@ export default function App() {
     } finally {
       setIsInitialLoad(false);
     }
-  }, [fetchWithAuth, auth.user?.role, handleLogout, activeView]);
+  }, [fetchWithAuth, auth.user?.role, handleLogout]);
 
   useEffect(() => {
     if (auth.isAuthenticated) {
@@ -308,7 +312,7 @@ export default function App() {
         body: JSON.stringify(setToSave)
       });
       if (response.ok) {
-        fetchData(); // Silently update history and dashboard
+        fetchData(activeView); // Silently update history and dashboard
       } else {
         showToast('Gagal menyimpan ke database!', 'error');
       }
@@ -328,7 +332,7 @@ export default function App() {
       onConfirm: async () => {
         try {
           const response = await fetchWithAuth(`/api/sets/${id}`, { method: 'DELETE' });
-          if (response.ok) await fetchData();
+          if (response.ok) await fetchData(activeView);
         } catch (error) {
           alert('Gagal menghapus.');
         }
@@ -345,7 +349,7 @@ export default function App() {
       if (response.ok) {
         showToast('Penjualan berhasil dicatat!', 'success');
         // Fetch data di background
-        fetchData();
+        fetchData(activeView);
       } else {
         const err = await response.json();
         showToast('Gagal: ' + err.error, 'error');
@@ -366,7 +370,7 @@ export default function App() {
       onConfirm: async () => {
         try {
           const response = await fetchWithAuth(`/api/sales/${id}`, { method: 'DELETE' });
-          if (response.ok) await fetchData();
+          if (response.ok) await fetchData(activeView);
         } catch (error) {
           alert('Gagal menghapus.');
         }
@@ -379,7 +383,7 @@ export default function App() {
       method: 'POST',
       body: JSON.stringify(supplier)
     });
-    if (response.ok) await fetchData();
+    if (response.ok) await fetchData(activeView);
   };
 
   const handleDeleteSupplier = async (id: string) => {
@@ -391,7 +395,7 @@ export default function App() {
       onConfirm: async () => {
         try {
           const response = await fetchWithAuth(`/api/suppliers/${id}`, { method: 'DELETE' });
-          if (response.ok) await fetchData();
+          if (response.ok) await fetchData(activeView);
         } catch (error) {
           alert('Gagal menghapus supplier.');
         }
@@ -404,7 +408,7 @@ export default function App() {
       method: 'POST',
       body: JSON.stringify(customer)
     });
-    if (response.ok) await fetchData();
+    if (response.ok) await fetchData(activeView);
   };
 
   const handleDeleteCustomer = async (id: string) => {
@@ -416,7 +420,7 @@ export default function App() {
       onConfirm: async () => {
         try {
           const response = await fetchWithAuth(`/api/customers/${id}`, { method: 'DELETE' });
-          if (response.ok) await fetchData();
+          if (response.ok) await fetchData(activeView);
         } catch (error) {
           alert('Gagal menghapus pelanggan.');
         }
@@ -433,7 +437,7 @@ export default function App() {
       method,
       body: JSON.stringify(expense)
     });
-    if (response.ok) await fetchData();
+    if (response.ok) await fetchData(activeView);
   };
 
   const handleDeleteExpense = async (id: string) => {
@@ -445,7 +449,7 @@ export default function App() {
       onConfirm: async () => {
         try {
           const response = await fetchWithAuth(`/api/expenses/${id}`, { method: 'DELETE' });
-          if (response.ok) await fetchData();
+          if (response.ok) await fetchData(activeView);
         } catch (error) {
           alert('Gagal menghapus pengeluaran.');
         }
@@ -459,7 +463,7 @@ export default function App() {
         method: 'POST',
         body: JSON.stringify({ name })
       });
-      if (res.ok) await fetchData();
+      if (res.ok) await fetchData(activeView);
     } catch (e) {
       alert('Gagal menambah jenis kayu');
     }
@@ -474,7 +478,7 @@ export default function App() {
       onConfirm: async () => {
         try {
           const res = await fetchWithAuth(`/api/wood-types/${name}`, { method: 'DELETE' });
-          if (res.ok) await fetchData();
+          if (res.ok) await fetchData(activeView);
         } catch (e) {
           alert('Gagal menghapus');
         }
@@ -491,7 +495,7 @@ export default function App() {
       onConfirm: async () => {
         try {
           const res = await fetchWithAuth(`/api/users/${id}`, { method: 'DELETE' });
-          if (res.ok) await fetchData();
+          if (res.ok) await fetchData(activeView);
           else alert('Gagal menghapus');
         } catch (e) {
           alert('Terjadi kesalahan jaringan.');
