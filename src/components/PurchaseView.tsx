@@ -625,21 +625,28 @@ export default function PurchaseView({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
-            {activeSet?.categories.map((cat) => (
-              <div key={cat.id} className="group relative">
-                <button
-                  onClick={() => {
-                    setSelectedCategoryId(cat.id);
-                    // Sync session states with the selected category
-                    setSessionWoodType(cat.woodType);
-                    setSessionLength(cat.length);
-                    setSessionCondition(cat.condition);
-                  }}
-                  className={`w-full text-left p-3 rounded-xl border transition-all pr-10 ${selectedCategoryId === cat.id
-                    ? 'border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-lg shadow-zinc-200 dark:shadow-none'
-                    : 'border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 hover:border-zinc-300 dark:hover:border-zinc-700'
-                    }`}
-                >
+            {(activeSet?.categories || [])
+              .slice()
+              .sort((a, b) => {
+                const minA = a.logs.length > 0 ? Math.min(...a.logs.map(l => l.diameter)) : 0;
+                const minB = b.logs.length > 0 ? Math.min(...b.logs.map(l => l.diameter)) : 0;
+                return minA - minB;
+              })
+              .map((cat) => (
+                <div key={cat.id} className="group relative">
+                  <button
+                    onClick={() => {
+                      setSelectedCategoryId(cat.id);
+                      // Sync session states with the selected category
+                      setSessionWoodType(cat.woodType);
+                      setSessionLength(cat.length);
+                      setSessionCondition(cat.condition);
+                    }}
+                    className={`w-full text-left p-3 rounded-xl border transition-all pr-10 ${selectedCategoryId === cat.id
+                      ? 'border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-lg shadow-zinc-200 dark:shadow-none'
+                      : 'border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:border-zinc-800/50 hover:border-zinc-300 dark:hover:border-zinc-700'
+                      }`}
+                  >
                   <div className="flex justify-between items-start mb-1">
                     <span className="font-bold text-sm tracking-tight">{cat.name || `${cat.woodType} ${cat.length}cm`}</span>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ml-2 ${selectedCategoryId === cat.id ? 'bg-white/20 dark:bg-black/10 text-white dark:text-zinc-900' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'
