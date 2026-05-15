@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
             'vendor-recharts': ['recharts'],
             'vendor-icons': ['lucide-react'],
             'vendor-motion': ['motion/react'],
-            'vendor-utils': ['date-fns', 'clsx', 'tailwind-merge'],
+            'vendor-utils': ['clsx', 'tailwind-merge'],
           }
         }
       },
