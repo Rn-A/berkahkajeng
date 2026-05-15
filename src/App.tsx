@@ -126,114 +126,95 @@ export default function App() {
 
   const fetchData = useCallback(async (view: ViewType) => {
     try {
-      // Prioritize dashboard data if it's the active view
       const processResponse = async (res: Response | null, setter: (data: any) => void, label: string) => {
         if (!res) return;
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) {
-            alert('Sesi Anda telah berakhir. Silakan login kembali.');
             handleLogout();
             return;
           }
           return;
         }
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) return;
         try {
           const data = await res.json();
           setter(data);
         } catch (e) {
-          console.error(`Failed to parse JSON for ${label}:`, e);
-          if (label === 'dashboard') {
-            setter({
-              inventory: { total_volume: 0, total_value: 0 },
-              purchases: { total_volume: 0, total_value: 0 },
-              sales: { total_revenue: 0, total_profit: 0, total_volume: 0 },
-              expenses: { total_expenses: 0 }
-            });
-          }
+          console.error(`JSON error for ${label}:`, e);
         }
       };
 
       if (view === 'dashboard') {
         const res = await fetchWithAuth('/api/dashboard');
-        await processResponse(res, setDashboardData, 'dashboard');
-        
-        // Fetch other background data
-        setTimeout(async () => {
-          try {
-            const [invRes, salesRes, purchRes, expRes] = await Promise.all([
-              fetchWithAuth('/api/inventory'),
-              fetchWithAuth('/api/sales'),
-              fetchWithAuth('/api/sets'),
-              fetchWithAuth('/api/expenses')
-            ]);
-            processResponse(invRes, setInventory, 'inventory');
-            processResponse(salesRes, setSalesHistory, 'sales');
-            processResponse(purchRes, setHistory, 'history');
-            processResponse(expRes, setExpenses, 'expenses');
-          } catch (e) {
-            console.error("Background fetch error:", e);
-          }
-        }, 1500);
-        return;
+        if (res && res.ok) {
+          const data = await res.json();
+          setDashboardData(data);
+          
+          // Background fetches - isolated from main flow
+          setTimeout(async () => {
+            try {
+              const [invR, salesR, purchR, expR] = await Promise.all([
+                fetchWithAuth('/api/inventory'),
+                fetchWithAuth('/api/sales'),
+                fetchWithAuth('/api/sets'),
+                fetchWithAuth('/api/expenses')
+              ]);
+              
+              if (invR?.ok) setInventory(await invR.json());
+              if (salesR?.ok) setSalesHistory(await salesR.json());
+              if (purchR?.ok) setHistory(await purchR.json());
+              if (expR?.ok) setExpenses(await expR.json());
+            } catch (e) {
+              console.error("BG load error:", e);
+            }
+          }, 1000);
+          return;
+        } else if (res && (res.status === 401 || res.status === 403)) {
+          handleLogout();
+          return;
+        }
       }
 
-      // Fetch specific data based on view
-      const queries: Promise<Response | null>[] = [];
-      const labels: string[] = [];
-      const setters: ((data: any) => void)[] = [];
-
-      switch (view) {
-        case 'purchase':
-          queries.push(fetchWithAuth('/api/sets'), fetchWithAuth('/api/suppliers'), fetchWithAuth('/api/wood-types'));
-          labels.push('sets', 'suppliers', 'woodTypes');
-          setters.push(setHistory, setSuppliers, setWoodTypes);
-          break;
-        case 'inventory':
-          queries.push(fetchWithAuth('/api/inventory'));
-          labels.push('inventory');
-          setters.push(setInventory);
-          break;
-        case 'sales':
-          queries.push(fetchWithAuth('/api/sales'), fetchWithAuth('/api/customers'), fetchWithAuth('/api/inventory'));
-          labels.push('sales', 'customers', 'inventory');
-          setters.push(setSalesHistory, setCustomers, setInventory);
-          break;
-        case 'expenses':
-          queries.push(fetchWithAuth('/api/expenses'));
-          labels.push('expenses');
-          setters.push(setExpenses);
-          break;
-        case 'suppliers':
-          queries.push(fetchWithAuth('/api/suppliers'));
-          labels.push('suppliers');
-          setters.push(setSuppliers);
-          break;
-        case 'customers':
-          queries.push(fetchWithAuth('/api/customers'));
-          labels.push('customers');
-          setters.push(setCustomers);
-          break;
-        case 'audit-logs':
-          if (auth.user?.role === 'owner') {
-            queries.push(fetchWithAuth('/api/audit-logs'));
-            labels.push('auditLogs');
-            setters.push(setAuditLogs);
-          }
-          break;
-      }
-
-      if (queries.length > 0) {
-        const results = await Promise.all(queries);
-        results.forEach((res, i) => processResponse(res, setters[i], labels[i]));
+      // Specific view fetches
+      if (view === 'purchase') {
+        const [setsR, suppR, woodR] = await Promise.all([
+          fetchWithAuth('/api/sets'),
+          fetchWithAuth('/api/suppliers'),
+          fetchWithAuth('/api/wood-types')
+        ]);
+        if (setsR?.ok) setHistory(await setsR.json());
+        if (suppR?.ok) setSuppliers(await suppR.json());
+        if (woodR?.ok) setWoodTypes(await woodR.json());
+      } else if (view === 'inventory') {
+        const res = await fetchWithAuth('/api/inventory');
+        if (res?.ok) setInventory(await res.json());
+      } else if (view === 'sales') {
+        const [salesR, custR, invR] = await Promise.all([
+          fetchWithAuth('/api/sales'),
+          fetchWithAuth('/api/customers'),
+          fetchWithAuth('/api/inventory')
+        ]);
+        if (salesR?.ok) setSalesHistory(await salesR.json());
+        if (custR?.ok) setCustomers(await custR.json());
+        if (invR?.ok) setInventory(await invR.json());
+      } else if (view === 'expenses') {
+        const res = await fetchWithAuth('/api/expenses');
+        if (res?.ok) setExpenses(await res.json());
+      } else if (view === 'suppliers') {
+        const res = await fetchWithAuth('/api/suppliers');
+        if (res?.ok) setSuppliers(await res.json());
+      } else if (view === 'customers') {
+        const res = await fetchWithAuth('/api/customers');
+        if (res?.ok) setCustomers(await res.json());
+      } else if (view === 'audit-logs' && auth.user?.role === 'owner') {
+        const res = await fetchWithAuth('/api/audit-logs');
+        if (res?.ok) setAuditLogs(await res.json());
       }
     } catch (error) {
-      console.error("Network error during fetch:", error);
+      console.error("Fetch error:", error);
     } finally {
       setIsInitialLoad(false);
     }
-  }, [fetchWithAuth, auth.user?.role]);
+  }, [fetchWithAuth, auth.user?.role, handleLogout]);
 
   useEffect(() => {
     if (auth.isAuthenticated) {
