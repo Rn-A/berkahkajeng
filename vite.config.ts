@@ -15,22 +15,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (id.includes('node_modules')) {
-              if (id.includes('recharts') || id.includes('d3-')) return 'vendor-recharts';
-              if (id.includes('motion') || id.includes('framer-motion')) return 'vendor-motion';
-              if (id.includes('lucide')) return 'vendor-lucide';
-              return 'vendor';
-            }
-          }
-        }
-      },
+      rollupOptions: {},
       chunkSizeWarningLimit: 1000,
       minify: 'esbuild',
-      target: 'es2020',
-      cssMinify: true,
     },
     server: {
       allowedHosts: true,
