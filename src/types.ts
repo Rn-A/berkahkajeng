@@ -123,8 +123,8 @@ export interface DashboardData {
   purchases: { total_volume: number; total_value: number };
   sales: { total_revenue: number; total_profit: number; total_volume: number };
   expenses: { total_expenses: number };
-  stockComposition: { wood_type: string; volume: number }[];
-  trends: {
+  stockComposition?: { wood_type: string; volume: number }[];
+  trends?: {
     purchases: any[];
     sales: any[];
     expenses: any[];

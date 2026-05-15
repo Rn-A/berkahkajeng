@@ -135,6 +135,13 @@ const renderLineTooltip = (props: any) => {
   return null;
 };
 
+const ChartPlaceholder = () => (
+  <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-50/50 dark:bg-zinc-900/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 animate-pulse">
+    <Activity size={24} className="text-zinc-300 dark:text-zinc-700 mb-2" />
+    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Menyiapkan Grafik...</span>
+  </div>
+);
+
 export default function DashboardView({ data, salesHistory, purchasesHistory, inventory, expenses, userRole = 'mandor' }: DashboardViewProps) {
   const [period, setPeriod] = useState<'hari' | 'minggu' | 'bulan' | 'tahun'>('bulan');
 
@@ -324,7 +331,7 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
     </div>
   );
 
-  const hasChartData = (data as any).trends || (purchasesHistory.length > 0 && salesHistory.length > 0);
+  const hasChartData = data.trends || (purchasesHistory.length > 0 && salesHistory.length > 0);
 
   // Build stats cards — mandor hanya melihat Stok, Volume Pembelian, Volume Penjualan
   const isOwner = userRole === 'owner';
@@ -378,13 +385,6 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
       }
     ] : [])
   ];
-
-  const ChartPlaceholder = () => (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-50/50 dark:bg-zinc-900/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 animate-pulse">
-      <Activity size={24} className="text-zinc-300 dark:text-zinc-700 mb-2" />
-      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Menyiapkan Grafik...</span>
-    </div>
-  );
 
   return (
     <div className="p-4 md:p-6 space-y-6 md:space-y-8 max-w-7xl mx-auto">
