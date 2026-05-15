@@ -868,8 +868,18 @@ apiRouter.get("/dashboard/stats", authenticateToken, async (req, res) => {
       };
       dashboardCache.set(cacheKey, { data, timestamp: Date.now() });
       res.json(data);
+    } else {
+      res.json({
+        inventory: { total_volume: 0, total_value: 0 },
+        purchases: { total_volume: 0, total_value: 0 },
+        sales: { total_revenue: 0, total_profit: 0, total_volume: 0 },
+        expenses: { total_expenses: 0 }
+      });
     }
-  } catch (e) { res.status(500).json({ error: 'Failed to fetch stats' }); }
+  } catch (e) { 
+    console.error("Stats fetch error:", e);
+    res.status(500).json({ error: 'Failed to fetch stats' }); 
+  }
 });
 
 // Heavy dashboard charts endpoint
@@ -899,8 +909,13 @@ apiRouter.get("/dashboard/charts", authenticateToken, async (req, res) => {
       };
       dashboardCache.set(cacheKey, { data, timestamp: Date.now() });
       res.json(data);
+    } else {
+      res.json({ trends: { purchases: [], sales: [], expenses: [] }, stockComposition: [] });
     }
-  } catch (e) { res.status(500).json({ error: 'Failed to fetch charts' }); }
+  } catch (e) { 
+    console.error("Charts fetch error:", e);
+    res.status(500).json({ error: 'Failed to fetch charts' }); 
+  }
 });
 
 // Deprecated old endpoint for backward compatibility
