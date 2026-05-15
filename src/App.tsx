@@ -69,6 +69,7 @@ export default function App() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [woodTypes, setWoodTypes] = useState<{ name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Modal State
@@ -228,22 +229,26 @@ export default function App() {
   const handleSaveSet = async (setOverride?: any) => {
     const setToSave = setOverride || activeSet;
     if (!setToSave || setToSave.categories.length === 0) return;
-    setIsLoading(true);
+    setIsSaving(true);
+    
+    // Optimistic UI: Reset form immediately
+    createNewSet();
+    alert('Set Kayu sedang disimpan di latar belakang...');
+
     try {
       const response = await fetchWithAuth('/api/sets', {
         method: 'POST',
         body: JSON.stringify(setToSave)
       });
       if (response.ok) {
-        createNewSet();
-        alert('Set Kayu berhasil disimpan dan stok diperbarui!');
-        // Fetch data di background tanpa memblokir UI
-        fetchData();
+        fetchData(); // Silently update history and dashboard
+      } else {
+        alert('Terjadi kesalahan saat menyimpan data ke database.');
       }
     } catch (error) {
-      alert('Gagal menyimpan data.');
+      alert('Gagal menghubungi server.');
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -683,7 +688,7 @@ export default function App() {
                     history={history}
                     onSave={handleSaveSet}
                     onDelete={handleDeleteSet}
-                    isLoading={isLoading}
+                    isLoading={isSaving}
                     createNewSet={createNewSet}
                     suppliers={suppliers}
                     woodTypes={woodTypes}
