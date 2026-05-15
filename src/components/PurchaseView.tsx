@@ -28,7 +28,7 @@ import {
   DIAMETER_RANGES,
   Supplier
 } from '../types';
-import { cn } from '../lib/utils';
+import { cn, roundPrice } from '../lib/utils';
 
 interface PurchaseViewProps {
   activeSet: WoodSet | null;
@@ -222,17 +222,7 @@ export default function PurchaseView({
       return { volume: acc.volume + catVolume, price: acc.price + catPrice };
     }, { volume: 0, price: 0 });
 
-    // Custom Rounding: Round to 1000. <= 500 rounds DOWN, > 500 rounds UP.
-    const price = rawTotals.price;
-    const remainder = price % 1000;
-    let roundedPrice;
-    if (remainder <= 500) {
-      roundedPrice = Math.floor(price / 1000) * 1000;
-    } else {
-      roundedPrice = Math.ceil(price / 1000) * 1000;
-    }
-
-    return { ...rawTotals, price: roundedPrice };
+    return { ...rawTotals, price: roundPrice(rawTotals.price) };
   };
 
   const exportToCSV = () => {

@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { TrendingUp, Package, ShoppingCart, Wallet, ArrowUpRight, CreditCard, Activity, Download, Database } from 'lucide-react';
 import { DashboardData, Sale, WoodSet, InventoryItem, Expense } from '../types';
+import { roundPrice } from '../lib/utils';
 
 interface DashboardViewProps {
   data: DashboardData | null;
@@ -165,6 +166,8 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
       pMap[l].vol += Number(p.total_volume) || 0;
       pMap[l].val += Number(p.total_value) || 0;
     });
+    // Round purchase totals per label
+    Object.keys(pMap).forEach(l => pMap[l].val = roundPrice(pMap[l].val));
 
     const sMap: Record<string, { vol: number; rev: number; profit: number }> = {};
     salesHistory.forEach(s => {
@@ -175,12 +178,19 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
       sMap[l].rev += Number(s.total_revenue) || 0;
       sMap[l].profit += Number(s.total_profit) || 0;
     });
+    // Round sales totals per label
+    Object.keys(sMap).forEach(l => {
+        sMap[l].rev = roundPrice(sMap[l].rev);
+        sMap[l].profit = roundPrice(sMap[l].profit);
+    });
 
     const eMap: Record<string, number> = {};
     expenses.forEach(e => {
       const l = trackLabel(e.date);
       eMap[l] = (eMap[l] || 0) + Number(e.amount || 0);
     });
+    // Round expense totals per label
+    Object.keys(eMap).forEach(l => eMap[l] = roundPrice(eMap[l]));
 
     const sortedLabels = Array.from(allLabels).sort((a, b) => labelTime[a] - labelTime[b]);
 
@@ -207,7 +217,7 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
         sales_volume: sVol,
         sales_revenue: sRev,
         expense_amount: eAmt,
-        net_cashflow: sRev - pVal - eAmt,
+        net_cashflow: roundPrice(sRev - pVal - eAmt),
         stock_volume: currentStock < 0 ? 0 : currentStock
       };
 
@@ -269,12 +279,12 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
     const totalSalesRevenue = currentSales.reduce((sum, s) => sum + (Number(s.total_revenue) || 0), 0);
     const totalSalesProfit = currentSales.reduce((sum, s) => sum + (Number(s.total_profit) || 0), 0);
     
-    const totalExpensesAmt = currentExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalExpensesAmt = roundPrice(currentExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0));
     
     const avgPurchasePrice = totalPurchaseVolume > 0 ? totalPurchaseValue / totalPurchaseVolume : 0;
     const avgSalesPrice = totalSalesVolume > 0 ? totalSalesRevenue / totalSalesVolume : 0;
-    const netCashflow = totalSalesRevenue - totalPurchaseValue - totalExpensesAmt;
-    const totalNetProfit = totalSalesProfit - totalExpensesAmt;
+    const netCashflow = roundPrice(totalSalesRevenue - totalPurchaseValue - totalExpensesAmt);
+    const totalNetProfit = roundPrice(totalSalesProfit - totalExpensesAmt);
 
     return {
       totalPurchaseVolume,

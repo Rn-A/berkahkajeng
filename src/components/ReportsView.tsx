@@ -13,7 +13,7 @@ import {
   Filter
 } from 'lucide-react';
 import { InventoryItem, Sale, WoodSet, Expense } from '../types';
-import { cn } from '../lib/utils';
+import { cn, roundPrice } from '../lib/utils';
 
 interface ReportsViewProps {
   inventory: InventoryItem[];
@@ -90,15 +90,15 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
   const financialSummary = useMemo(() => {
     const { sales: fSales, purchases: fPurchases, expenses: fExpenses } = filteredData;
 
-    const totalRevenue = fSales.reduce((acc, s) => acc + Number(s.total_revenue), 0);
-    const totalCost = fSales.reduce((acc, s) => acc + Number(s.total_cost), 0);
-    const totalExpenses = fExpenses.reduce((acc, e) => acc + Number(e.amount), 0);
-    const totalProfit = totalRevenue - totalCost - totalExpenses;
-    const totalInventoryValue = inventory.reduce((acc, i) => acc + Number(i.total_value), 0);
+    const totalRevenue = roundPrice(fSales.reduce((acc, s) => acc + Number(s.total_revenue), 0));
+    const totalCost = roundPrice(fSales.reduce((acc, s) => acc + Number(s.total_cost), 0));
+    const totalExpenses = roundPrice(fExpenses.reduce((acc, e) => acc + Number(e.amount), 0));
+    const totalProfit = roundPrice(totalRevenue - totalCost - totalExpenses);
+    const totalInventoryValue = roundPrice(inventory.reduce((acc, i) => acc + Number(i.total_value), 0));
     
     const totalPurchaseVolume = fPurchases.reduce((acc, p) => acc + (p.total_volume || 0), 0);
     
-    const totalPurchaseValue = fPurchases.reduce((acc, p) => acc + (p.total_value || 0), 0);
+    const totalPurchaseValue = roundPrice(fPurchases.reduce((acc, p) => acc + (p.total_value || 0), 0));
 
     const totalSalesVolume = fSales.reduce((acc, s) => {
       return acc + s.items.reduce((sum, item) => sum + Number(item.volume), 0);

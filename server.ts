@@ -27,6 +27,19 @@ const SERVER_ID = Math.random().toString(36).substring(7);
 const JWT_SECRET = process.env.JWT_SECRET || "berkah-kajeng-strong-secret-placeholder-2024-change-me";
 const PAGINATION_LIMIT = 50; // Default limit for pagination
 
+/**
+ * Custom Rounding: Round to 1000. 
+ * Rule: <= 500 rounds DOWN, > 500 rounds UP.
+ */
+const roundPrice = (price: number): number => {
+  const remainder = price % 1000;
+  if (remainder <= 500) {
+    return Math.floor(price / 1000) * 1000;
+  } else {
+    return Math.ceil(price / 1000) * 1000;
+  }
+};
+
 // Konfigurasi CORS
 app.use(cors({
   origin: process.env.ALLOWED_ORIGIN || 'http://localhost:3000',
@@ -554,6 +567,7 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
       totalVolume += catVol;
       totalValue += catVal;
     }
+    totalValue = roundPrice(totalValue);
     await connection.query("INSERT INTO wood_sets (id, supplierName, date, total_volume, total_value, synced) VALUES (?, ?, ?, ?, ?, ?)", [set.id, set.supplierName, set.date, totalVolume, totalValue, true]);
     for (const cat of set.categories) {
       await connection.query("INSERT INTO wood_categories (id, set_id, woodType, length, condition_val, pricePerM3) VALUES (?, ?, ?, ?, ?, ?)", [cat.id, set.id, cat.woodType, cat.length, cat.condition, cat.pricePerM3]);
@@ -733,6 +747,8 @@ apiRouter.post("/sales", authenticateToken, async (req, res) => {
     }
 
     // Update the parent record with calculated totals
+    totalRev = roundPrice(totalRev);
+    totalCost = roundPrice(totalCost);
     await connection.query("UPDATE sales SET total_revenue = ?, total_cost = ?, total_profit = ? WHERE id = ?", [totalRev, totalCost, totalRev - totalCost, id]);
 
     await connection.commit();
