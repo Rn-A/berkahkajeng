@@ -1534,39 +1534,99 @@ export default function PurchaseView({
                 </button>
               </div>
               
-              <div className="p-6 space-y-4">
-                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/30 flex gap-3">
-                  <AlertTriangle size={20} className="text-amber-500 shrink-0" />
-                  <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                    Tempelkan daftar diameter yang dipisahkan oleh <strong>spasi</strong>, <strong>koma</strong>, atau <strong>baris baru</strong>. <br/>
-                    Contoh: <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">12 15 15 20 22 25</code>
+              <div className="p-0 flex-1 overflow-hidden flex flex-col">
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 border-b border-emerald-100 dark:border-emerald-900/20 flex gap-3 shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <Calculator size={16} />
+                  </div>
+                  <p className="text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed font-medium">
+                    Masukkan jumlah batang untuk setiap diameter sesuai catatan lapangan. <br/>
+                    Sistem otomatis menghitung volume berdasarkan panjang <strong>{sessionLength} cm</strong>.
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Data Diameter Kayu</label>
-                  <textarea
-                    autoFocus
-                    className="w-full h-48 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-all resize-none font-mono text-lg"
-                    placeholder="Masukkan diameter di sini..."
-                    value={bulkInputText}
-                    onChange={(e) => setBulkInputText(e.target.value)}
-                  />
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-zinc-50/50 dark:bg-zinc-950/20 custom-scrollbar">
+                  {Array.from({ length: 41 }, (_, i) => 10 + i).map(d => {
+                    const targetCat = getAutoCategory(d);
+                    const count = targetCat ? targetCat.logs.filter(l => l.diameter === d).length : 0;
+                    const volPerBatang = calculateVolume(d, sessionLength);
+                    const isEditing = editingRangeDiameter === d;
+
+                    return (
+                      <div key={d} className="bg-white dark:bg-zinc-900 rounded-2xl p-4 flex items-center justify-between shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-shadow">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-lg text-zinc-900 dark:text-white">Ø {d} cm</span>
+                          <span className="text-[11px] font-mono text-zinc-400">{volPerBatang.toFixed(4)} m³</span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <button 
+                            onClick={() => {
+                              const cat = getAutoCategory(d);
+                              if (cat && count > 0) setLogCountByDiameter(cat.id, d, count - 1);
+                            }}
+                            className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all active:scale-90"
+                          >
+                            <Minus size={18} />
+                          </button>
+                          
+                          <div className="w-16 flex flex-col items-center">
+                            <input
+                              type="number"
+                              min="0"
+                              className="w-full bg-transparent text-center font-black text-xl dark:text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              value={isEditing ? tempRangeLogCount : count}
+                              onFocus={() => {
+                                setEditingRangeDiameter(d);
+                                setTempRangeLogCount(count.toString());
+                              }}
+                              onChange={(e) => setTempRangeLogCount(e.target.value)}
+                              onBlur={() => {
+                                const val = parseInt(tempRangeLogCount);
+                                const finalVal = (!isNaN(val) && val >= 0) ? val : 0;
+                                
+                                if (finalVal > 0) {
+                                  let cat = getAutoCategory(d);
+                                  if (!cat) addLogAuto(d);
+                                  
+                                  const inferredName = determineWoodCategory(sessionCondition, sessionLength, d);
+                                  const target = activeSet?.categories.find(c => 
+                                    c.woodType === sessionWoodType && 
+                                    c.length === sessionLength && 
+                                    c.condition === sessionCondition &&
+                                    c.name === inferredName
+                                  );
+                                  if (target) setLogCountByDiameter(target.id, d, finalVal);
+                                } else if (targetCat) {
+                                  setLogCountByDiameter(targetCat.id, d, 0);
+                                }
+                                setEditingRangeDiameter(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                              }}
+                            />
+                            <div className="w-10 h-[2px] bg-zinc-200 dark:bg-zinc-700 mt-0.5 rounded-full" />
+                          </div>
+
+                          <button 
+                            onClick={() => addLogAuto(d)}
+                            className="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 transition-all active:scale-90 shadow-lg shadow-emerald-500/20"
+                          >
+                            <Plus size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="p-6 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
                   <button
                     onClick={() => setShowBulkInput(false)}
-                    className="flex-1 py-4 px-6 rounded-2xl font-bold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all active:scale-95"
+                    className="w-full py-4 px-6 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-zinc-900/20 dark:shadow-white/10"
                   >
-                    Batal
-                  </button>
-                  <button
-                    onClick={handleBulkInput}
-                    disabled={!bulkInputText.trim()}
-                    className="flex-[2] py-4 px-6 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-zinc-900/20 dark:shadow-white/10 disabled:opacity-50"
-                  >
-                    Proses & Tambahkan
+                    Selesai & Tutup
                   </button>
                 </div>
               </div>
