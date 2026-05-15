@@ -128,10 +128,22 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
   };
 
   const totals = useMemo(() => {
-    return saleItems.reduce((acc, item) => ({
+    const rawTotals = saleItems.reduce((acc, item) => ({
       volume: acc.volume + Number(item.volume || 0),
       revenue: acc.revenue + (Number(item.volume || 0) * Number(item.sale_price_per_m3 || 0))
     }), { volume: 0, revenue: 0 });
+
+    // Custom Rounding: Round to 1000. <= 500 rounds DOWN, > 500 rounds UP.
+    const price = rawTotals.revenue;
+    const remainder = price % 1000;
+    let roundedRevenue;
+    if (remainder <= 500) {
+      roundedRevenue = Math.floor(price / 1000) * 1000;
+    } else {
+      roundedRevenue = Math.ceil(price / 1000) * 1000;
+    }
+
+    return { ...rawTotals, revenue: roundedRevenue };
   }, [saleItems]);
 
   const handleSubmit = async () => {

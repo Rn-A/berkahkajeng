@@ -210,7 +210,7 @@ export default function PurchaseView({
   const currentHistoryItems = filteredHistory.slice(indexOfFirstItem, indexOfLastItem);
 
   const calculateSetTotals = (set: WoodSet) => {
-    return set.categories.reduce((acc, cat) => {
+    const rawTotals = set.categories.reduce((acc, cat) => {
       const catVolume = cat.logs.reduce((sum, log) => {
         const isX = cat.condition === 'X' || log.diameter < 10;
         return sum + (isX ? 0 : log.volume);
@@ -221,6 +221,18 @@ export default function PurchaseView({
       }, 0);
       return { volume: acc.volume + catVolume, price: acc.price + catPrice };
     }, { volume: 0, price: 0 });
+
+    // Custom Rounding: Round to 1000. <= 500 rounds DOWN, > 500 rounds UP.
+    const price = rawTotals.price;
+    const remainder = price % 1000;
+    let roundedPrice;
+    if (remainder <= 500) {
+      roundedPrice = Math.floor(price / 1000) * 1000;
+    } else {
+      roundedPrice = Math.ceil(price / 1000) * 1000;
+    }
+
+    return { ...rawTotals, price: roundedPrice };
   };
 
   const exportToCSV = () => {
