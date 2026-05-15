@@ -350,7 +350,8 @@ export default function PurchaseView({
       if (selectedCat && 
           selectedCat.woodType === sessionWoodType && 
           selectedCat.length === sessionLength && 
-          selectedCat.condition === sessionCondition) {
+          selectedCat.condition === sessionCondition &&
+          selectedCat.name === inferredName) {
         targetCat = selectedCat;
       }
     }
@@ -360,7 +361,8 @@ export default function PurchaseView({
       targetCat = activeSet.categories.find(c =>
         c.woodType === sessionWoodType &&
         c.length === sessionLength &&
-        c.condition === sessionCondition
+        c.condition === sessionCondition &&
+        c.name === inferredName
       );
     }
 
