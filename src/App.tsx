@@ -124,40 +124,21 @@ export default function App() {
     return fetch(url, { ...options, headers });
   }, [auth.user?.token]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (view: ViewType) => {
     try {
-      const [setsRes, invRes, salesRes, dashRes, suppRes, custRes, expRes, woodRes, auditRes] = await Promise.all([
-        fetchWithAuth('/api/sets'),
-        fetchWithAuth('/api/inventory'),
-        fetchWithAuth('/api/sales'),
-        fetchWithAuth('/api/dashboard'),
-        fetchWithAuth('/api/suppliers'),
-        fetchWithAuth('/api/customers'),
-        fetchWithAuth('/api/expenses'),
-        fetchWithAuth('/api/wood-types'),
-        auth.user?.role === 'owner' ? fetchWithAuth('/api/audit-logs') : Promise.resolve(null)
-      ]);
-
+      // Prioritize dashboard data if it's the active view
       const processResponse = async (res: Response | null, setter: (data: any) => void, label: string) => {
         if (!res) return;
-        const isApi = res.headers.get('X-API-Request') === 'true';
-        const serverId = res.headers.get('X-Backend-Server');
-
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) {
             alert('Sesi Anda telah berakhir. Silakan login kembali.');
             handleLogout();
             return;
           }
-          console.error(`Failed to fetch ${label}: HTTP ${res.status} (API: ${isApi}, Server: ${serverId})`);
           return;
         }
-
         const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          return;
-        }
-
+        if (!contentType || !contentType.includes('application/json')) return;
         try {
           const data = await res.json();
           setter(data);
@@ -166,17 +147,79 @@ export default function App() {
         }
       };
 
-      await Promise.all([
-        processResponse(setsRes, setHistory, 'sets'),
-        processResponse(invRes, setInventory, 'inventory'),
-        processResponse(salesRes, setSalesHistory, 'sales'),
-        processResponse(dashRes, setDashboardData, 'dashboard'),
-        processResponse(suppRes, setSuppliers, 'suppliers'),
-        processResponse(custRes, setCustomers, 'customers'),
-        processResponse(expRes, setExpenses, 'expenses'),
-        processResponse(woodRes, setWoodTypes, 'woodTypes'),
-        processResponse(auditRes, setAuditLogs, 'auditLogs')
-      ]);
+      if (view === 'dashboard') {
+        const res = await fetchWithAuth('/api/dashboard');
+        await processResponse(res, setDashboardData, 'dashboard');
+        
+        // Fetch background data for other common metrics with lower priority
+        setTimeout(async () => {
+          try {
+            const [invRes, salesRes, purchRes, expRes] = await Promise.all([
+              fetchWithAuth('/api/inventory'),
+              fetchWithAuth('/api/sales'),
+              fetchWithAuth('/api/sets'),
+              fetchWithAuth('/api/expenses')
+            ]);
+            processResponse(invRes, setInventory, 'inventory');
+            processResponse(salesRes, setSalesHistory, 'sales');
+            processResponse(purchRes, setHistory, 'history');
+            processResponse(expRes, setExpenses, 'expenses');
+          } catch (e) {
+            console.error("Background fetch error:", e);
+          }
+        }, 1000);
+        return;
+      }
+
+      // Fetch specific data based on view
+      const queries: Promise<Response | null>[] = [];
+      const labels: string[] = [];
+      const setters: ((data: any) => void)[] = [];
+
+      switch (view) {
+        case 'purchase':
+          queries.push(fetchWithAuth('/api/sets'), fetchWithAuth('/api/suppliers'), fetchWithAuth('/api/wood-types'));
+          labels.push('sets', 'suppliers', 'woodTypes');
+          setters.push(setHistory, setSuppliers, setWoodTypes);
+          break;
+        case 'inventory':
+          queries.push(fetchWithAuth('/api/inventory'));
+          labels.push('inventory');
+          setters.push(setInventory);
+          break;
+        case 'sales':
+          queries.push(fetchWithAuth('/api/sales'), fetchWithAuth('/api/customers'), fetchWithAuth('/api/inventory'));
+          labels.push('sales', 'customers', 'inventory');
+          setters.push(setSalesHistory, setCustomers, setInventory);
+          break;
+        case 'expenses':
+          queries.push(fetchWithAuth('/api/expenses'));
+          labels.push('expenses');
+          setters.push(setExpenses);
+          break;
+        case 'suppliers':
+          queries.push(fetchWithAuth('/api/suppliers'));
+          labels.push('suppliers');
+          setters.push(setSuppliers);
+          break;
+        case 'customers':
+          queries.push(fetchWithAuth('/api/customers'));
+          labels.push('customers');
+          setters.push(setCustomers);
+          break;
+        case 'audit-logs':
+          if (auth.user?.role === 'owner') {
+            queries.push(fetchWithAuth('/api/audit-logs'));
+            labels.push('auditLogs');
+            setters.push(setAuditLogs);
+          }
+          break;
+      }
+
+      if (queries.length > 0) {
+        const results = await Promise.all(queries);
+        results.forEach((res, i) => processResponse(res, setters[i], labels[i]));
+      }
     } catch (error) {
       console.error("Network error during fetch:", error);
     } finally {
@@ -186,10 +229,12 @@ export default function App() {
 
   useEffect(() => {
     if (auth.isAuthenticated) {
-      fetchData();
-      createNewSet();
+      fetchData(activeView);
+      if (activeView === 'purchase' && !activeSet) {
+        createNewSet();
+      }
     }
-  }, [fetchData, auth.isAuthenticated]);
+  }, [fetchData, auth.isAuthenticated, activeView]);
 
   const handleLogin = async (credentials: any) => {
     try {

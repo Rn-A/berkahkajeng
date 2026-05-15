@@ -835,11 +835,23 @@ apiRouter.delete("/sales/:id", authenticateToken, async (req, res) => {
   }
 });
 
+const dashboardCache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_TTL = 30000; // 30 seconds
+
 apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
   try {
+    const cacheKey = 'global_dashboard';
+    const cached = dashboardCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json(cached.data);
+    }
+    
+    // Set headers for speed
+    res.setHeader('X-Cache', 'MISS');
+    res.setHeader('Cache-Control', 'private, max-age=10, stale-while-revalidate=60');
+
     if (dbConnected && pool) {
-      res.setHeader('Cache-Control', 'private, max-age=10, stale-while-revalidate=60');
-      
       const queries = [
         pool.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM inventory"),
         pool.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM wood_sets"),
@@ -864,7 +876,7 @@ apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
       const expenseTrends = results[7][0];
       const stockComposition = results[8][0];
 
-      res.json({
+      const dashboardData = {
         inventory: stock[0] || { total_volume: 0, total_value: 0 },
         purchases: purch[0] || { total_volume: 0, total_value: 0 },
         sales: { 
@@ -879,7 +891,10 @@ apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
           sales: salesTrends.length > 0 ? salesTrends : [{ month: 'Jan', sales_revenue: 0, sales_profit: 0 }],
           expenses: expenseTrends.length > 0 ? expenseTrends : [{ month: 'Jan', expense_amount: 0 }]
         }
-      });
+      };
+
+      dashboardCache.set(cacheKey, { data: dashboardData, timestamp: Date.now() });
+      res.json(dashboardData);
     } else {
       res.json({
         inventory: { total_volume: 0, total_value: 0 },
@@ -1218,7 +1233,15 @@ async function startServer() {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
     app.use(vite.middlewares);
   } else if (process.env.NODE_ENV === "production") {
-    app.use(express.static("dist"));
+    // Cache control for static assets (logo, etc.)
+    app.use((req, res, next) => {
+      if (req.url.match(/\.(png|jpg|jpeg|gif|ico|svg|webp)$/)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+      next();
+    });
+
+    app.use(express.static(path.join(__dirname, 'dist')));
     app.get("*", (req, res) => res.sendFile(path.resolve("dist/index.html")));
   }
   const server = app.listen(PORT, "0.0.0.0", () => {
