@@ -94,45 +94,37 @@ export async function initDB() {
     // Test connection
     const connection = await pool.getConnection();
 
-    await connection.query(`CREATE TABLE IF NOT EXISTS wood_sets (id VARCHAR(36) PRIMARY KEY, supplierName VARCHAR(255), date DATE, total_volume FLOAT DEFAULT 0, total_value DECIMAL(15, 2) DEFAULT 0, synced BOOLEAN DEFAULT FALSE)`);
+    await connection.query(`CREATE TABLE IF NOT EXISTS wood_sets (id VARCHAR(36) PRIMARY KEY, supplierName VARCHAR(255), date DATE, total_volume FLOAT DEFAULT 0, total_value DECIMAL(15, 2) DEFAULT 0, synced BOOLEAN DEFAULT FALSE, INDEX(date))`);
     await connection.query(`CREATE TABLE IF NOT EXISTS wood_categories (id VARCHAR(36) PRIMARY KEY, set_id VARCHAR(36), woodType VARCHAR(100), length FLOAT, condition_val VARCHAR(50), pricePerM3 DECIMAL(15, 2), FOREIGN KEY (set_id) REFERENCES wood_sets(id) ON DELETE CASCADE)`);
     await connection.query(`CREATE TABLE IF NOT EXISTS log_entries (id VARCHAR(36) PRIMARY KEY, category_id VARCHAR(36), diameter INT, volume FLOAT, FOREIGN KEY (category_id) REFERENCES wood_categories(id) ON DELETE CASCADE)`);
-    await connection.query(`CREATE TABLE IF NOT EXISTS inventory (id INT AUTO_INCREMENT PRIMARY KEY, wood_type VARCHAR(100), diameter_group VARCHAR(50), length FLOAT, condition_val VARCHAR(50) DEFAULT 'Umum', total_logs INT DEFAULT 0, total_volume FLOAT DEFAULT 0, avg_price DECIMAL(15, 2) DEFAULT 0, total_value DECIMAL(15, 2) DEFAULT 0, UNIQUE KEY inventory_unique_group (wood_type, diameter_group, length, condition_val))`);
+    await connection.query(`CREATE TABLE IF NOT EXISTS inventory (id INT AUTO_INCREMENT PRIMARY KEY, wood_type VARCHAR(100), diameter_group VARCHAR(50), length FLOAT, condition_val VARCHAR(50) DEFAULT 'Umum', total_logs INT DEFAULT 0, total_volume FLOAT DEFAULT 0, avg_price DECIMAL(15, 2) DEFAULT 0, total_value DECIMAL(15, 2) DEFAULT 0, UNIQUE KEY inventory_unique_group (wood_type, diameter_group, length, condition_val), INDEX(wood_type))`);
+    
     try {
-      await connection.query(`ALTER TABLE inventory ADD COLUMN condition_val VARCHAR(50) DEFAULT 'Umum'`);
-      await connection.query(`ALTER TABLE inventory DROP INDEX wood_type`);
       await connection.query(`ALTER TABLE inventory ADD UNIQUE KEY inventory_unique_group (wood_type, diameter_group, length, condition_val)`);
-    } catch (e) {
-      // Ignore if already migrated
-    }
-    await connection.query(`CREATE TABLE IF NOT EXISTS sales (id VARCHAR(36) PRIMARY KEY, customer_name VARCHAR(255), date DATE, total_revenue DECIMAL(15, 2) DEFAULT 0, total_cost DECIMAL(15, 2) DEFAULT 0, total_profit DECIMAL(15, 2) DEFAULT 0)`);
+    } catch (e) { /* ignore */ }
+
+    await connection.query(`CREATE TABLE IF NOT EXISTS sales (id VARCHAR(36) PRIMARY KEY, customer_name VARCHAR(255), date DATE, total_revenue DECIMAL(15, 2) DEFAULT 0, total_cost DECIMAL(15, 2) DEFAULT 0, total_profit DECIMAL(15, 2) DEFAULT 0, INDEX(date))`);
     await connection.query(`CREATE TABLE IF NOT EXISTS sales_items (id VARCHAR(36) PRIMARY KEY, sale_id VARCHAR(36), wood_type VARCHAR(100), diameter_group VARCHAR(50), length FLOAT, condition_val VARCHAR(50), volume FLOAT, logs_deducted INT DEFAULT 1, sale_price_per_m3 DECIMAL(15, 2), cost_price_per_m3 DECIMAL(15, 2), subtotal_revenue DECIMAL(15, 2), subtotal_cost DECIMAL(15, 2), profit DECIMAL(15, 2), FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE)`);
-    try {
-      await connection.query(`ALTER TABLE sales_items ADD COLUMN condition_val VARCHAR(50)`);
-    } catch (e) { /* ignore */ }
-    try {
-      // Kolom untuk reversal stok
-      await connection.query(`ALTER TABLE sales_items ADD COLUMN logs_deducted INT DEFAULT 1`);
-    } catch (e) { /* ignore */ }
+    
+    try { await connection.query(`ALTER TABLE sales_items ADD COLUMN condition_val VARCHAR(50)`); } catch (e) { }
+    try { await connection.query(`ALTER TABLE sales_items ADD COLUMN logs_deducted INT DEFAULT 1`); } catch (e) { }
+
     await connection.query(`CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL, role ENUM('owner', 'mandor') NOT NULL, full_name VARCHAR(100), email VARCHAR(255) UNIQUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-    // Tambahkan kolom email jika belum ada (pecah jadi 2 langkah untuk TiDB)
+    
     const [columns]: any = await connection.query(`SHOW COLUMNS FROM users LIKE 'email'`);
     if (columns.length === 0) {
-      console.log(`[${SERVER_ID}] ℹ️ Menambahkan kolom email ke tabel users...`);
       await connection.query(`ALTER TABLE users ADD COLUMN email VARCHAR(255)`);
-      try {
-        await connection.query(`ALTER TABLE users ADD UNIQUE INDEX idx_user_email (email)`);
-      } catch (e) { /* ignore if index exists */ }
+      try { await connection.query(`ALTER TABLE users ADD UNIQUE INDEX idx_user_email (email)`); } catch (e) { }
     }
 
     await connection.query(`CREATE TABLE IF NOT EXISTS password_resets (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL, token VARCHAR(255) NOT NULL, expires_at TIMESTAMP NOT NULL, INDEX(email), INDEX(token))`);
     await connection.query(`CREATE TABLE IF NOT EXISTS suppliers (id VARCHAR(36) PRIMARY KEY, name VARCHAR(255) NOT NULL, phone VARCHAR(20), address TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
     await connection.query(`CREATE TABLE IF NOT EXISTS customers (id VARCHAR(36) PRIMARY KEY, name VARCHAR(255) NOT NULL, phone VARCHAR(20), address TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-    await connection.query(`CREATE TABLE IF NOT EXISTS expenses (id VARCHAR(36) PRIMARY KEY, category VARCHAR(100) NOT NULL, description TEXT, amount DECIMAL(15, 2) NOT NULL, date DATE NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+    await connection.query(`CREATE TABLE IF NOT EXISTS expenses (id VARCHAR(36) PRIMARY KEY, category VARCHAR(100) NOT NULL, description TEXT, amount DECIMAL(15, 2) NOT NULL, date DATE NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX(date))`);
     await connection.query(`CREATE TABLE IF NOT EXISTS audit_logs (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, action VARCHAR(255), details TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL, INDEX(created_at))`);
-    try {
-      await connection.query(`ALTER TABLE audit_logs ADD INDEX idx_audit_created_at (created_at)`);
-    } catch (e) { /* ignore */ }
+    
+    try { await connection.query(`ALTER TABLE audit_logs ADD INDEX idx_audit_created_at (created_at)`); } catch (e) { }
+    
     await connection.query(`CREATE TABLE IF NOT EXISTS wood_types (name VARCHAR(100) PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
 
     // Isi data awal jenis kayu
@@ -847,20 +839,30 @@ apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
   try {
     if (dbConnected && pool) {
       res.setHeader('Cache-Control', 'private, max-age=10, stale-while-revalidate=60');
-      const [stock]: any = await pool!.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM inventory");
-      const [purch]: any = await pool!.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM wood_sets");
       
-      // Optimized sales query: total_revenue and total_profit are already in sales table
-      const [sales]: any = await pool!.query("SELECT SUM(total_revenue) as total_revenue, SUM(total_profit) as total_profit FROM sales");
-      const [salesVol]: any = await pool!.query("SELECT SUM(volume) as total_volume FROM sales_items");
+      const queries = [
+        pool.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM inventory"),
+        pool.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM wood_sets"),
+        pool.query("SELECT SUM(total_revenue) as total_revenue, SUM(total_profit) as total_profit FROM sales"),
+        pool.query("SELECT SUM(volume) as total_volume FROM sales_items"),
+        pool.query("SELECT SUM(amount) as total_expenses FROM expenses"),
+        pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_volume) as purchase_volume FROM wood_sets GROUP BY month ORDER BY MIN(date)"),
+        pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_revenue) as sales_revenue, SUM(total_profit) as sales_profit FROM sales GROUP BY month ORDER BY MIN(date)"),
+        pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(amount) as expense_amount FROM expenses GROUP BY month ORDER BY MIN(date)"),
+        pool.query("SELECT wood_type, SUM(total_volume) as volume FROM inventory WHERE total_logs > 0 GROUP BY wood_type")
+      ];
+
+      const results = await Promise.all(queries);
       
-      const [expenses]: any = await pool!.query("SELECT SUM(amount) as total_expenses FROM expenses");
-
-      const [purchTrends]: any = await pool!.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_volume) as purchase_volume FROM wood_sets GROUP BY month ORDER BY MIN(date)");
-      const [salesTrends]: any = await pool!.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_revenue) as sales_revenue, SUM(total_profit) as sales_profit FROM sales GROUP BY month ORDER BY MIN(date)");
-      const [expenseTrends]: any = await pool!.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(amount) as expense_amount FROM expenses GROUP BY month ORDER BY MIN(date)");
-
-      const [stockComposition]: any = await pool!.query("SELECT wood_type, SUM(total_volume) as volume FROM inventory WHERE total_logs > 0 GROUP BY wood_type");
+      const stock = results[0][0];
+      const purch = results[1][0];
+      const sales = results[2][0];
+      const salesVol = results[3][0];
+      const expenses = results[4][0];
+      const purchTrends = results[5][0];
+      const salesTrends = results[6][0];
+      const expenseTrends = results[7][0];
+      const stockComposition = results[8][0];
 
       res.json({
         inventory: stock[0] || { total_volume: 0, total_value: 0 },

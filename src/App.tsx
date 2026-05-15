@@ -510,6 +510,8 @@ export default function App() {
           <img
             src="/logo.png"
             alt="Berkah Kajeng"
+            width="40"
+            height="40"
             className="h-10 w-10 object-contain shrink-0"
           />
           {isSidebarOpen && (
@@ -579,7 +581,7 @@ export default function App() {
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="Berkah Kajeng" className="h-8 w-8 object-contain" />
+            <img src="/logo.png" alt="Berkah Kajeng" width="32" height="32" className="h-8 w-8 object-contain" />
             <div>
               <h1 className="font-bold text-sm tracking-tight leading-none">Berkah Kajeng</h1>
               <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">Management System</p>
@@ -619,7 +621,7 @@ export default function App() {
             >
               <div className="p-4 bg-zinc-900 flex items-center justify-between border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <img src="/logo.png" alt="Berkah Kajeng" className="h-10 w-10 object-contain" />
+                  <img src="/logo.png" alt="Berkah Kajeng" width="40" height="40" className="h-10 w-10 object-contain" />
                   <div>
                     <h1 className="font-bold text-base tracking-tight text-white">Berkah Kajeng</h1>
                     <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">Management System</p>

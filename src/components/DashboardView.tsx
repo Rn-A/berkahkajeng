@@ -429,6 +429,7 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
       )}
 
       {/* Stats Grid */}
+      <h2 className="sr-only">Statistik Utama</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {stats.map((stat: any, i) => (
           <div key={i} className="bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow">
@@ -438,7 +439,7 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
               </div>
             </div>
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">{stat.label}</p>
-            <h3 className="text-lg md:text-xl font-bold text-zinc-900 dark:text-white truncate">{stat.value}</h3>
+            <p className="text-lg md:text-xl font-bold text-zinc-900 dark:text-white truncate">{stat.value}</p>
             <div className="space-y-0.5 mt-1">
               <p className="text-[10px] md:text-xs text-zinc-500 dark:text-zinc-400 truncate">{stat.subValue}</p>
               {stat.subValue2 && (
