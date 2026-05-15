@@ -17,7 +17,9 @@ import {
   ChevronLeft,
   Edit2,
   Minus,
-  Plus as PlusIcon
+  Plus as PlusIcon,
+  ClipboardList,
+  MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -187,6 +189,8 @@ export default function PurchaseView({
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
+  const [showBulkInput, setShowBulkInput] = useState(false);
+  const [bulkInputText, setBulkInputText] = useState('');
 
   const [editingLogDiameter, setEditingLogDiameter] = useState<number | null>(null);
   const [tempLogCount, setTempLogCount] = useState<string>('');
@@ -427,6 +431,28 @@ export default function PurchaseView({
     };
 
     setActiveSet({ ...activeSet, categories: newCategories });
+  };
+
+  const handleBulkInput = () => {
+    if (!activeSet) return;
+    
+    // Pecah teks berdasarkan spasi, koma, atau baris baru
+    const diameters = bulkInputText
+      .split(/[\s,\n]+/)
+      .map(d => parseInt(d))
+      .filter(d => !isNaN(d) && d > 0);
+      
+    if (diameters.length === 0) {
+      showToast('Tidak ada diameter valid yang ditemukan', 'error');
+      return;
+    }
+    
+    // Gunakan addLogAuto yang sudah ada untuk kategorisasi otomatis
+    diameters.forEach(d => addLogAuto(d));
+    
+    setBulkInputText('');
+    setShowBulkInput(false);
+    showToast(`Berhasil menambahkan ${diameters.length} batang kayu`, 'success');
   };
 
   const setLogCountByDiameter = (categoryId: string, diameter: number, count: number) => {
@@ -808,10 +834,19 @@ export default function PurchaseView({
             </div>
 
             <div className="mt-6 border-t border-zinc-100 dark:border-zinc-800 pt-6">
-              <label className="text-[10px] items-center font-bold text-zinc-400 uppercase tracking-widest mb-3 flex gap-2">
-                <Calculator size={14} />
-                Input Diameter (Mode Pencatat)
-              </label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-[10px] items-center font-bold text-zinc-400 uppercase tracking-widest flex gap-2">
+                  <Calculator size={14} />
+                  Input Diameter (Mode Pencatat)
+                </label>
+                <button
+                  onClick={() => setShowBulkInput(true)}
+                  className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1.5 rounded-lg transition-all active:scale-95 shadow-sm border border-blue-100 dark:border-blue-900/30"
+                >
+                  <ClipboardList size={14} />
+                  Salin/Tempel Data
+                </button>
+              </div>
 
               <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4">
                 <button
@@ -1320,6 +1355,86 @@ export default function PurchaseView({
                   </div>
                 </div>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Input Modal */}
+      <AnimatePresence>
+        {showBulkInput && (
+          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setShowBulkInput(false)} 
+              className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" 
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 20 }} 
+              className="relative w-full max-w-lg bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800"
+            >
+              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center">
+                    <ClipboardList size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold dark:text-white">Salin/Tempel Data</h3>
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Input Masal dari Kertas (Tally Sheet)</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowBulkInput(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+                  <X size={20} className="dark:text-zinc-400" />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-4">
+                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/30 flex gap-3">
+                  <AlertTriangle size={20} className="text-amber-500 shrink-0" />
+                  <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                    Tempelkan daftar diameter yang dipisahkan oleh <strong>spasi</strong>, <strong>koma</strong>, atau <strong>baris baru</strong>. <br/>
+                    Contoh: <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">12 15 15 20 22 25</code>
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Data Diameter Kayu</label>
+                  <textarea
+                    autoFocus
+                    className="w-full h-48 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-all resize-none font-mono text-lg"
+                    placeholder="Masukkan diameter di sini..."
+                    value={bulkInputText}
+                    onChange={(e) => setBulkInputText(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowBulkInput(false)}
+                    className="flex-1 py-4 px-6 rounded-2xl font-bold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all active:scale-95"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleBulkInput}
+                    disabled={!bulkInputText.trim()}
+                    className="flex-[2] py-4 px-6 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-zinc-900/20 dark:shadow-white/10 disabled:opacity-50"
+                  >
+                    Proses & Tambahkan
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-800/30 border-t border-zinc-100 dark:border-zinc-800 text-center">
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-2">
+                  <MessageSquare size={12} />
+                  Sistem akan mengelompokkan kategori secara otomatis
+                </p>
+              </div>
             </motion.div>
           </div>
         )}
