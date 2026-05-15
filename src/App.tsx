@@ -30,7 +30,7 @@ const ReportsView = React.lazy(() => import('./components/ReportsView'));
 const SuppliersView = React.lazy(() => import('./components/SuppliersView'));
 const CustomersView = React.lazy(() => import('./components/CustomersView'));
 const ExpensesView = React.lazy(() => import('./components/ExpensesView'));
-const AuditLogsView = React.lazy(() => import('./components/AuditLogsView'));
+const AuditLogsView = React.lazy(() => import('./components/AuditLogsView.tsx'));
 const UserManagementView = React.lazy(() => import('./components/UserManagementView'));
 const ProfileView = React.lazy(() => import('./components/ProfileView'));
 const Login = React.lazy(() => import('./components/Login'));
@@ -39,22 +39,6 @@ const ConfirmationModal = React.lazy(() => import('./components/ConfirmationModa
 import { cn } from './lib/utils';
 
 type ViewType = 'dashboard' | 'purchase' | 'inventory' | 'sales' | 'reports' | 'suppliers' | 'customers' | 'expenses' | 'audit-logs' | 'users' | 'profile' | 'forgot-password';
-
-const AuditLogLoader = ({ fetchWithAuth }: { fetchWithAuth: any }) => {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchWithAuth('/api/audit-logs')
-      .then((res: any) => res.json())
-      .then((data: any) => setLogs(data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [fetchWithAuth]);
-
-  if (loading) return <div className="p-8 text-center text-zinc-500">Memuat log audit...</div>;
-  return <AuditLogsView logs={logs} />;
-};
 
 export default function App() {
   const [activeView, setActiveView] = useState<ViewType>('dashboard');
@@ -77,29 +61,19 @@ export default function App() {
   });
 
   // State for data
-  const [appData, setAppData] = useState<{
-    history: WoodSet[];
-    inventory: InventoryItem[];
-    salesHistory: Sale[];
-    dashboardData: DashboardData | null;
-    suppliers: Supplier[];
-    customers: Customer[];
-    expenses: Expense[];
-    woodTypes: { name: string }[];
-  }>({
-    history: [],
-    inventory: [],
-    salesHistory: [],
-    dashboardData: null,
-    suppliers: [],
-    customers: [],
-    expenses: [],
-    woodTypes: []
-  });
   const [activeSet, setActiveSet] = useState<WoodSet | null>(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [history, setHistory] = useState<WoodSet[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [salesHistory, setSalesHistory] = useState<Sale[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [woodTypes, setWoodTypes] = useState<{ name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Modal & Toast State
   const [modalConfig, setModalConfig] = useState<{
@@ -115,17 +89,6 @@ export default function App() {
     variant: 'info',
     onConfirm: () => { }
   });
-
-  const {
-    history,
-    inventory,
-    salesHistory,
-    dashboardData,
-    suppliers,
-    customers,
-    expenses,
-    woodTypes
-  } = appData;
 
   const [toast, setToast] = useState<{ isOpen: boolean, message: string, type: 'success' | 'info' | 'error' }>({
     isOpen: false,
@@ -163,7 +126,7 @@ export default function App() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [setsRes, invRes, salesRes, dashRes, suppRes, custRes, expRes, woodRes] = await Promise.all([
+      const [setsRes, invRes, salesRes, dashRes, suppRes, custRes, expRes, woodRes, auditRes] = await Promise.all([
         fetchWithAuth('/api/sets'),
         fetchWithAuth('/api/inventory'),
         fetchWithAuth('/api/sales'),
@@ -171,40 +134,49 @@ export default function App() {
         fetchWithAuth('/api/suppliers'),
         fetchWithAuth('/api/customers'),
         fetchWithAuth('/api/expenses'),
-        fetchWithAuth('/api/wood-types')
+        fetchWithAuth('/api/wood-types'),
+        auth.user?.role === 'owner' ? fetchWithAuth('/api/audit-logs') : Promise.resolve(null)
       ]);
 
-      // Check for unauthorized
-      [setsRes, invRes, salesRes, dashRes].forEach(res => {
-        if (res && (res.status === 401 || res.status === 403)) {
-          handleLogout();
+      const processResponse = async (res: Response | null, setter: (data: any) => void, label: string) => {
+        if (!res) return;
+        const isApi = res.headers.get('X-API-Request') === 'true';
+        const serverId = res.headers.get('X-Backend-Server');
+
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            alert('Sesi Anda telah berakhir. Silakan login kembali.');
+            handleLogout();
+            return;
+          }
+          console.error(`Failed to fetch ${label}: HTTP ${res.status} (API: ${isApi}, Server: ${serverId})`);
+          return;
         }
-      });
 
-      const [setsData, invData, salesData, dashData, suppData, custData, expData, woodData] = await Promise.all([
-        setsRes.json().catch(() => []),
-        invRes.json().catch(() => []),
-        salesRes.json().catch(() => []),
-        dashRes.json().catch(() => null),
-        suppRes.json().catch(() => []),
-        custRes.json().catch(() => []),
-        expRes.json().catch(() => []),
-        woodRes.json().catch(() => [])
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          return;
+        }
+
+        try {
+          const data = await res.json();
+          setter(data);
+        } catch (e) {
+          console.error(`Failed to parse JSON for ${label}:`, e);
+        }
+      };
+
+      await Promise.all([
+        processResponse(setsRes, setHistory, 'sets'),
+        processResponse(invRes, setInventory, 'inventory'),
+        processResponse(salesRes, setSalesHistory, 'sales'),
+        processResponse(dashRes, setDashboardData, 'dashboard'),
+        processResponse(suppRes, setSuppliers, 'suppliers'),
+        processResponse(custRes, setCustomers, 'customers'),
+        processResponse(expRes, setExpenses, 'expenses'),
+        processResponse(woodRes, setWoodTypes, 'woodTypes'),
+        processResponse(auditRes, setAuditLogs, 'auditLogs')
       ]);
-
-      React.startTransition(() => {
-        setAppData({
-          dashboardData: dashData,
-          inventory: invData,
-          salesHistory: salesData,
-          history: setsData,
-          suppliers: suppData,
-          customers: custData,
-          expenses: expData,
-          woodTypes: woodData
-        });
-      });
-
     } catch (error) {
       console.error("Network error during fetch:", error);
     } finally {
@@ -506,27 +478,24 @@ export default function App() {
   }
 
   return (
-    <div className={cn(
-      "flex h-screen bg-zinc-50 dark:bg-zinc-950 font-sans selection:bg-zinc-900 selection:text-white transition-colors duration-500",
-      isDarkMode && "dark"
-    )}>
+    <div className="min-h-screen flex flex-col md:flex-row bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased">
       {/* Desktop Sidebar */}
-      <aside
-        className={cn(
-          "hidden md:flex flex-col bg-zinc-900 text-white transition-all duration-300 ease-in-out sticky top-0 h-screen z-40",
-          isSidebarOpen ? "w-72" : "w-24"
-        )}
-      >
-        <div className="p-4 flex items-center gap-3 border-b border-white/10 relative h-[72px]">
-          <div className={cn("flex items-center gap-3 transition-all duration-300 w-full", !isSidebarOpen && "justify-center")}>
-            <img src="/logo.png" alt="BK" className="h-10 w-10 object-contain shrink-0" fetchpriority="high" />
-            {isSidebarOpen && (
-              <div className="overflow-hidden whitespace-nowrap">
-                <h1 className="font-bold text-lg tracking-tight leading-none">Berkah Kajeng</h1>
-                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">Management System</p>
-              </div>
-            )}
-          </div>
+      <aside className={cn(
+        "hidden md:flex bg-zinc-900 text-white transition-all duration-300 flex-col sticky top-0 h-screen z-40 print:hidden",
+        isSidebarOpen ? "w-64" : "w-20"
+      )}>
+        <div className="p-4 flex items-center gap-3 border-b border-white/10">
+          <img
+            src="/logo.png"
+            alt="Berkah Kajeng"
+            className="h-10 w-10 object-contain shrink-0"
+          />
+          {isSidebarOpen && (
+            <div className="overflow-hidden whitespace-nowrap">
+              <h1 className="font-bold text-lg tracking-tight">Berkah Kajeng</h1>
+              <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Management System</p>
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
@@ -575,6 +544,7 @@ export default function App() {
         </div>
       </aside>
 
+      {/* Mobile Header */}
       <header className="md:hidden h-16 bg-zinc-900 text-white flex items-center justify-between px-4 sticky top-0 z-50 print:hidden">
         <div className="flex items-center gap-3">
           <button
@@ -584,7 +554,7 @@ export default function App() {
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="Berkah Kajeng" className="h-8 w-8 object-contain" fetchpriority="high" />
+            <img src="/logo.png" alt="Berkah Kajeng" className="h-8 w-8 object-contain" />
             <div>
               <h1 className="font-bold text-sm tracking-tight leading-none">Berkah Kajeng</h1>
               <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">Management System</p>
@@ -620,11 +590,11 @@ export default function App() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-[300px] bg-white dark:bg-zinc-900 z-[70] md:hidden flex flex-col shadow-2xl"
+              className="fixed inset-y-0 left-0 w-[280px] bg-white dark:bg-zinc-900 z-[70] md:hidden flex flex-col shadow-2xl"
             >
               <div className="p-4 bg-zinc-900 flex items-center justify-between border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <img src="/logo.png" alt="Berkah Kajeng" className="h-10 w-10 object-contain" fetchpriority="high" />
+                  <img src="/logo.png" alt="Berkah Kajeng" className="h-10 w-10 object-contain" />
                   <div>
                     <h1 className="font-bold text-base tracking-tight text-white">Berkah Kajeng</h1>
                     <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">Management System</p>
@@ -750,7 +720,6 @@ export default function App() {
                     onSave={handleSaveSet}
                     onDelete={handleDeleteSet}
                     isLoading={isSaving}
-                    isLoadingHistory={isInitialLoad}
                     createNewSet={createNewSet}
                     suppliers={suppliers}
                     woodTypes={woodTypes}
@@ -769,7 +738,6 @@ export default function App() {
                     onDelete={handleDeleteSale}
                     salesHistory={salesHistory}
                     customers={customers}
-                    isLoading={isInitialLoad}
                   />
                 )}
                 {activeView === 'suppliers' && (
@@ -802,7 +770,7 @@ export default function App() {
                   />
                 )}
                 {activeView === 'audit-logs' && (
-                  <AuditLogLoader fetchWithAuth={fetchWithAuth} />
+                  <AuditLogsView logs={auditLogs} />
                 )}
                  {activeView === 'users' && (
                    <UserManagementView 

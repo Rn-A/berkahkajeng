@@ -29,7 +29,6 @@ interface SalesViewProps {
   onDelete: (id: string) => Promise<void>;
   salesHistory: Sale[];
   customers: Customer[];
-  isLoading?: boolean;
 }
 
 const formatCurrency = (value: number) => {
@@ -59,9 +58,9 @@ const terbilang = (n: number): string => {
 
 // Sub-komponen untuk baris item agar performa input lancar
 interface SaleItemRowProps {
-  item: SaleItem;
+  item: any;
   inventory: InventoryItem[];
-  onUpdate: (updates: Partial<SaleItem>) => void;
+  onUpdate: (updates: any) => void;
   onRemove: () => void;
 }
 
@@ -214,11 +213,7 @@ const SaleItemRow = React.memo(({ item, inventory, onUpdate, onRemove }: SaleIte
   );
 });
 
-const Skeleton = ({ className }: { className: string }) => (
-  <div className={cn("animate-pulse bg-zinc-200 dark:bg-zinc-800 rounded-lg", className)} />
-);
-
-export default function SalesView({ inventory, onSave, onDelete, salesHistory, customers, isLoading }: SalesViewProps) {
+export default function SalesView({ inventory, onSave, onDelete, salesHistory, customers }: SalesViewProps) {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
@@ -227,18 +222,15 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
-  const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
-  const deferredSearchTerm = React.useDeferredValue(searchTerm);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saleItems, setSaleItems] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const filteredHistory = useMemo(() => {
-    return salesHistory.filter(sale =>
-      sale.customer_name.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
-      sale.id.toLowerCase().includes(deferredSearchTerm.toLowerCase())
-    );
-  }, [salesHistory, deferredSearchTerm]);
+  const filteredHistory = salesHistory.filter(sale =>
+    sale.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sale.id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // Pagination logic
   const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
@@ -272,28 +264,22 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
   };
 
   const addItem = () => {
-    const newItem: SaleItem = {
+    setSaleItems([...saleItems, {
       id: crypto.randomUUID(),
-      sale_id: '',
       wood_type: '',
       diameter_group: '',
       length: 0,
       volume: 0,
-      total_logs: 0,
       sale_price_per_m3: 0,
-      cost_price_per_m3: 0,
-      subtotal_revenue: 0,
-      subtotal_cost: 0,
-      profit: 0
-    };
-    setSaleItems([...saleItems, newItem]);
+      total_logs: 0
+    }]);
   };
 
   const removeItem = (id: string) => {
     setSaleItems(saleItems.filter(item => item.id !== id));
   };
 
-  const updateItem = (id: string, updates: Partial<SaleItem>) => {
+  const updateItem = (id: string, updates: any) => {
     setSaleItems(saleItems.map(item => item.id === id ? { ...item, ...updates } : item));
   };
 
@@ -330,46 +316,21 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
       }
     }
 
-    setIsSaving(true);
+    setIsLoading(true);
     try {
-      const calculatedItems = saleItems.map(item => {
-        const inv = inventory.find(i =>
-          i.wood_type === item.wood_type &&
-          i.diameter_group === item.diameter_group &&
-          i.length === Number(item.length) &&
-          i.condition_val === (item.condition || 'Umum')
-        );
-        const costPrice = Number(inv?.avg_price || 0);
-        return {
-          ...item,
-          id: `SI-${Math.random().toString(36).substring(2, 9)}`,
-          cost_price_per_m3: costPrice,
-          subtotal_revenue: item.volume * item.sale_price_per_m3,
-          subtotal_cost: item.volume * costPrice,
-          profit: (item.volume * item.sale_price_per_m3) - (item.volume * costPrice)
-        };
-      });
-
-      const totalRev = calculatedItems.reduce((sum, item) => sum + item.subtotal_revenue, 0);
-      const totalCost = calculatedItems.reduce((sum, item) => sum + item.subtotal_cost, 0);
-
-      const newSale = {
-        id: `SALE-${Date.now()}`,
+      await onSave({
+        id: crypto.randomUUID(),
         customer_name: customerName,
         date: saleDate,
-        total_revenue: roundPrice(totalRev),
-        total_cost: roundPrice(totalCost),
-        total_profit: roundPrice(totalRev) - roundPrice(totalCost),
-        items: calculatedItems
-      };
-      await onSave(newSale);
+        items: saleItems
+      });
+      setShowForm(false);
       setCustomerName('');
       setSaleItems([]);
-      setShowForm(false);
-    } catch (e) {
-      alert('Gagal menyimpan penjualan');
+    } catch (error) {
+      console.error(error);
     } finally {
-      setIsSaving(false);
+      setIsLoading(false);
     }
   };
 
@@ -432,45 +393,34 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {isLoading ? (
-                Array(5).fill(0).map((_, i) => (
-                  <tr key={i}>
-                    <td className="px-6 py-4"><Skeleton className="h-4 w-24" /></td>
-                    <td className="px-6 py-4"><Skeleton className="h-6 w-40" /></td>
-                    <td className="px-6 py-4 text-right"><Skeleton className="h-5 w-24 ml-auto" /></td>
-                    <td className="px-6 py-4 text-right"><Skeleton className="h-8 w-16 ml-auto" /></td>
-                  </tr>
-                ))
-              ) : (
-                currentItems.map((sale) => (
-                  <tr key={sale.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group">
-                    <td className="px-6 py-4 text-sm font-medium text-zinc-600 dark:text-zinc-400">{sale.date}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                          <Truck size={16} />
-                        </div>
-                        <span className="font-bold text-zinc-900 dark:text-white">{sale.customer_name}</span>
+              {currentItems.map((sale) => (
+                <tr key={sale.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group">
+                  <td className="px-6 py-4 text-sm font-medium text-zinc-600 dark:text-zinc-400">{sale.date}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                        <Truck size={16} />
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-right font-bold text-zinc-900 dark:text-white">{formatCurrency(roundPrice(sale.total_revenue))}</td>
-                    <td className="px-6 py-4 text-right flex justify-end gap-2">
-                      <button
-                        onClick={() => setSelectedSale(sale)}
-                        className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all"
-                      >
-                        <FileText size={20} />
-                      </button>
-                      <button
-                        onClick={() => onDelete(sale.id)}
-                        className="p-2 text-zinc-300 hover:text-red-500 md:opacity-0 md:group-hover:opacity-100 transition-all"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
+                      <span className="font-bold text-zinc-900 dark:text-white">{sale.customer_name}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right font-bold text-zinc-900 dark:text-white">{formatCurrency(roundPrice(sale.total_revenue))}</td>
+                  <td className="px-6 py-4 text-right flex justify-end gap-2">
+                    <button
+                      onClick={() => setSelectedSale(sale)}
+                      className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all"
+                    >
+                      <FileText size={20} />
+                    </button>
+                    <button
+                      onClick={() => onDelete(sale.id)}
+                      className="p-2 text-zinc-300 hover:text-red-500 md:opacity-0 md:group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -549,7 +499,7 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
                   ))}
                   {saleItems.length === 0 && (
                     <div className="text-center py-16 border-2 border-dashed border-zinc-100 dark:border-zinc-800 rounded-3xl bg-zinc-50/50 dark:bg-zinc-900/50">
-                      <Package size={48} className="mx-auto text-zinc-200 dark:border-zinc-800 mb-3" />
+                      <Package size={48} className="mx-auto text-zinc-200 dark:text-zinc-800 mb-3" />
                       <p className="text-zinc-400 font-medium">Belum ada item penjualan.</p>
                       <button onClick={addItem} className="text-zinc-900 dark:text-white font-bold text-sm mt-2 hover:underline">Tambah Item Sekarang</button>
                     </div>
@@ -571,14 +521,14 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
               </div>
               <button
                 onClick={handleSubmit}
-                disabled={isSaving}
+                disabled={isLoading}
                 className={cn(
-                  "w-full md:w-auto py-4 px-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl flex items-center justify-center gap-3 font-bold transition-all active:scale-95 shadow-lg shadow-emerald-600/20",
-                  isSaving && "opacity-50 cursor-not-allowed"
+                  "bg-emerald-500 hover:bg-emerald-600 text-white h-14 px-10 rounded-2xl font-bold text-lg flex items-center gap-3 shadow-xl shadow-emerald-500/20 transition-all w-full md:w-auto justify-center",
+                  isLoading && "opacity-50 cursor-not-allowed"
                 )}
               >
-                <Save size={20} />
-                {isSaving ? 'Memproses...' : 'Simpan Transaksi'}
+                <Save size={24} />
+                {isLoading ? 'Memproses...' : 'Simpan Transaksi'}
               </button>
             </div>
           </div>

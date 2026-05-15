@@ -14,11 +14,6 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
-    build: {
-      rollupOptions: {},
-      chunkSizeWarningLimit: 1000,
-      minify: 'esbuild',
-    },
     server: {
       allowedHosts: true,
     }
