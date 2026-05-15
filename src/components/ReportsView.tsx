@@ -332,7 +332,7 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
                       {p.total_volume.toFixed(3)} <span className="text-[10px] font-bold text-zinc-400">m³</span>
                     </td>
                     <td className="px-6 py-4 text-right font-bold text-zinc-900 dark:text-white">
-                      {formatCurrency(p.total_value)}
+                      {formatCurrency(roundPrice(p.total_value))}
                     </td>
                   </tr>
                 ))}
@@ -376,7 +376,7 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
                       {s.items.reduce((acc, i) => acc + Number(i.volume), 0).toFixed(3)} <span className="text-[10px] font-bold text-zinc-400">m³</span>
                     </td>
                     <td className="px-6 py-4 text-right font-black text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(s.total_revenue)}
+                      {formatCurrency(roundPrice(s.total_revenue))}
                     </td>
                   </tr>
                 ))}
@@ -420,7 +420,7 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
                   </td>
                   <td className="px-6 py-4 text-xs text-zinc-600 dark:text-zinc-400">{e.description}</td>
                   <td className="px-6 py-4 text-right font-bold text-red-500">
-                    {formatCurrency(e.amount)}
+                    {formatCurrency(roundPrice(e.amount))}
                   </td>
                 </tr>
               ))}

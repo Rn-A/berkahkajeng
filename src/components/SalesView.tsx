@@ -249,7 +249,7 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
                       <span className="font-bold text-zinc-900 dark:text-white">{sale.customer_name}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right font-bold text-zinc-900 dark:text-white">{formatCurrency(sale.total_revenue)}</td>
+                  <td className="px-6 py-4 text-right font-bold text-zinc-900 dark:text-white">{formatCurrency(roundPrice(sale.total_revenue))}</td>
                   <td className="px-6 py-4 text-right flex justify-end gap-2">
                     <button 
                       onClick={() => setSelectedSale(sale)}
@@ -600,13 +600,13 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
                       <td colSpan={2} className="py-6">
                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Terbilang</p>
                         {/* Terbilang Otomatis */}
-                        <p className="text-sm font-bold text-zinc-900 italic"># {terbilang(selectedSale.total_revenue)} #</p>
+                        <p className="text-sm font-bold text-zinc-900 italic"># {terbilang(roundPrice(selectedSale.total_revenue))} #</p>
                       </td>
                       <td className="py-6 text-right">
                         <p className="text-sm font-bold text-zinc-900">TOTAL</p>
                       </td>
                       <td className="py-6 text-right">
-                        <p className="text-2xl font-black text-zinc-900">{formatCurrency(selectedSale.total_revenue)}</p>
+                        <p className="text-2xl font-black text-zinc-900">{formatCurrency(roundPrice(selectedSale.total_revenue))}</p>
                       </td>
                     </tr>
                   </tfoot>

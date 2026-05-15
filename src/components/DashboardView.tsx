@@ -309,7 +309,7 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
     {
       label: 'Total Stok Aktif',
       value: `${data.inventory?.total_volume?.toFixed(2) || 0} m³`,
-      subValue: isOwner ? formatCurrency(data.inventory?.total_value || 0) : `${inventory.length} jenis kayu`,
+      subValue: isOwner ? formatCurrency(roundPrice(data.inventory?.total_value || 0)) : `${inventory.length} jenis kayu`,
       icon: Package,
       color: 'bg-blue-500'
     },
