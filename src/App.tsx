@@ -144,28 +144,30 @@ export default function App() {
           setter(data);
         } catch (e) {
           console.error(`Failed to parse JSON for ${label}:`, e);
+          if (label === 'dashboard') {
+            setter({
+              inventory: { total_volume: 0, total_value: 0 },
+              purchases: { total_volume: 0, total_value: 0 },
+              sales: { total_revenue: 0, total_profit: 0, total_volume: 0 },
+              expenses: { total_expenses: 0 }
+            });
+          }
         }
       };
 
       if (view === 'dashboard') {
-        const res = await fetchWithAuth('/api/dashboard/stats');
+        const res = await fetchWithAuth('/api/dashboard');
         await processResponse(res, setDashboardData, 'dashboard');
         
-        // Fetch background data for other common metrics with lower priority
+        // Fetch other background data
         setTimeout(async () => {
           try {
-            const [chartRes, invRes, salesRes, purchRes, expRes] = await Promise.all([
-              fetchWithAuth('/api/dashboard/charts'),
+            const [invRes, salesRes, purchRes, expRes] = await Promise.all([
               fetchWithAuth('/api/inventory'),
               fetchWithAuth('/api/sales'),
               fetchWithAuth('/api/sets'),
               fetchWithAuth('/api/expenses')
             ]);
-            
-            // Merge chart data into dashboardData
-            const chartData = await chartRes?.json();
-            setDashboardData(prev => prev ? { ...prev, ...chartData } : chartData);
-            
             processResponse(invRes, setInventory, 'inventory');
             processResponse(salesRes, setSalesHistory, 'sales');
             processResponse(purchRes, setHistory, 'history');

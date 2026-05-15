@@ -838,12 +838,12 @@ apiRouter.delete("/sales/:id", authenticateToken, async (req, res) => {
 const dashboardCache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 30000; // 30 seconds
 
-// Fast dashboard stats endpoint
-apiRouter.get("/dashboard/stats", authenticateToken, async (req, res) => {
+// Combined dashboard endpoint for stability
+apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
   try {
-    const cacheKey = 'dashboard_stats';
+    const cacheKey = 'global_dashboard_v2';
     const cached = dashboardCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < 10000) {
+    if (cached && Date.now() - cached.timestamp < 15000) {
       return res.json(cached.data);
     }
     
@@ -853,7 +853,11 @@ apiRouter.get("/dashboard/stats", authenticateToken, async (req, res) => {
         pool.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM wood_sets"),
         pool.query("SELECT SUM(total_revenue) as total_revenue, SUM(total_profit) as total_profit FROM sales"),
         pool.query("SELECT SUM(volume) as total_volume FROM sales_items"),
-        pool.query("SELECT SUM(amount) as total_expenses FROM expenses")
+        pool.query("SELECT SUM(amount) as total_expenses FROM expenses"),
+        pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_volume) as purchase_volume FROM wood_sets GROUP BY month ORDER BY MIN(date)"),
+        pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_revenue) as sales_revenue, SUM(total_profit) as sales_profit FROM sales GROUP BY month ORDER BY MIN(date)"),
+        pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(amount) as expense_amount FROM expenses GROUP BY month ORDER BY MIN(date)"),
+        pool.query("SELECT wood_type, SUM(total_volume) as volume FROM inventory WHERE total_logs > 0 GROUP BY wood_type")
       ];
       const results = await Promise.all(queries);
       const data = {
@@ -864,7 +868,13 @@ apiRouter.get("/dashboard/stats", authenticateToken, async (req, res) => {
           total_profit: results[2][0][0]?.total_profit || 0, 
           total_volume: results[3][0][0]?.total_volume || 0 
         },
-        expenses: results[4][0][0] || { total_expenses: 0 }
+        expenses: results[4][0][0] || { total_expenses: 0 },
+        trends: {
+          purchases: results[5][0].length > 0 ? results[5][0] : [{ month: 'Jan', purchase_volume: 0 }],
+          sales: results[6][0].length > 0 ? results[6][0] : [{ month: 'Jan', sales_revenue: 0, sales_profit: 0 }],
+          expenses: results[7][0].length > 0 ? results[7][0] : [{ month: 'Jan', expense_amount: 0 }]
+        },
+        stockComposition: results[8][0]
       };
       dashboardCache.set(cacheKey, { data, timestamp: Date.now() });
       res.json(data);
@@ -873,54 +883,14 @@ apiRouter.get("/dashboard/stats", authenticateToken, async (req, res) => {
         inventory: { total_volume: 0, total_value: 0 },
         purchases: { total_volume: 0, total_value: 0 },
         sales: { total_revenue: 0, total_profit: 0, total_volume: 0 },
-        expenses: { total_expenses: 0 }
+        expenses: { total_expenses: 0 },
+        trends: { purchases: [], sales: [], expenses: [] },
+        stockComposition: []
       });
     }
   } catch (e) { 
-    console.error("Stats fetch error:", e);
-    res.status(500).json({ error: 'Failed to fetch stats' }); 
+    res.status(500).json({ error: 'Dashboard error' }); 
   }
-});
-
-// Heavy dashboard charts endpoint
-apiRouter.get("/dashboard/charts", authenticateToken, async (req, res) => {
-  try {
-    const cacheKey = 'dashboard_charts';
-    const cached = dashboardCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      return res.json(cached.data);
-    }
-    
-    if (dbConnected && pool) {
-      const queries = [
-        pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_volume) as purchase_volume FROM wood_sets GROUP BY month ORDER BY MIN(date)"),
-        pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_revenue) as sales_revenue, SUM(total_profit) as sales_profit FROM sales GROUP BY month ORDER BY MIN(date)"),
-        pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(amount) as expense_amount FROM expenses GROUP BY month ORDER BY MIN(date)"),
-        pool.query("SELECT wood_type, SUM(total_volume) as volume FROM inventory WHERE total_logs > 0 GROUP BY wood_type")
-      ];
-      const results = await Promise.all(queries);
-      const data = {
-        trends: {
-          purchases: results[0][0].length > 0 ? results[0][0] : [{ month: 'Jan', purchase_volume: 0 }],
-          sales: results[1][0].length > 0 ? results[1][0] : [{ month: 'Jan', sales_revenue: 0, sales_profit: 0 }],
-          expenses: results[2][0].length > 0 ? results[2][0] : [{ month: 'Jan', expense_amount: 0 }]
-        },
-        stockComposition: results[3][0]
-      };
-      dashboardCache.set(cacheKey, { data, timestamp: Date.now() });
-      res.json(data);
-    } else {
-      res.json({ trends: { purchases: [], sales: [], expenses: [] }, stockComposition: [] });
-    }
-  } catch (e) { 
-    console.error("Charts fetch error:", e);
-    res.status(500).json({ error: 'Failed to fetch charts' }); 
-  }
-});
-
-// Deprecated old endpoint for backward compatibility
-apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
-  res.redirect('/api/dashboard/stats');
 });
     } else {
       res.json({
