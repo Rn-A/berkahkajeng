@@ -426,6 +426,29 @@ export default function PurchaseView({
     setActiveSet({ ...activeSet, categories: newCategories });
   };
 
+  const setLogCountByDiameter = (categoryId: string, diameter: number, count: number) => {
+    if (!activeSet) return;
+    const catIndex = activeSet.categories.findIndex(c => c.id === categoryId);
+    if (catIndex === -1) return;
+
+    const cat = activeSet.categories[catIndex];
+    const otherLogs = cat.logs.filter(l => l.diameter !== diameter);
+    
+    const newCountLogs: LogEntry[] = Array.from({ length: Math.max(0, count) }, () => ({
+      id: crypto.randomUUID(),
+      diameter,
+      volume: calculateVolume(diameter, cat.length || 200)
+    }));
+
+    const newCategories = [...activeSet.categories];
+    newCategories[catIndex] = {
+      ...cat,
+      logs: [...otherLogs, ...newCountLogs]
+    };
+
+    setActiveSet({ ...activeSet, categories: newCategories });
+  };
+
   const deleteLog = (categoryId: string, logId: string) => {
     if (!activeSet) return;
     setActiveSet({
@@ -943,9 +966,25 @@ export default function PurchaseView({
                                 <Minus size={14} />
                               </button>
                               
-                              <div className="relative">
-                                <span className="font-bold text-sm dark:text-white min-w-[20px] text-center block">{count}</span>
-                                <div className="absolute -bottom-1 left-0 right-0 h-[1.5px] bg-zinc-300 dark:bg-zinc-700" />
+                                <input
+                                  type="number"
+                                  min="0"
+                                  className="w-12 bg-transparent text-center font-bold text-sm dark:text-white border-b border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  value={count}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    if (!isNaN(val)) {
+                                      setLogCountByDiameter(activeCategory.id, diamNum, val);
+                                    } else if (e.target.value === '') {
+                                      // Allow empty temporarily while typing
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    if (e.target.value === '') {
+                                      setLogCountByDiameter(activeCategory.id, diamNum, 0);
+                                    }
+                                  }}
+                                />
                               </div>
                               
                               <button 
