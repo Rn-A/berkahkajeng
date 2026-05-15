@@ -2,24 +2,28 @@ import React, { useState, useMemo } from 'react';
 import { TrendingUp, Package, ShoppingCart, Wallet, ArrowUpRight, CreditCard, Activity, Download, Database, LayoutDashboard, Zap, AlertCircle } from 'lucide-react';
 import { DashboardData, Sale, WoodSet, InventoryItem, Expense } from '../types';
 import { roundPrice, cn } from '../lib/utils';
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart, Pie, Cell, Legend
+} from 'recharts';
 
 const Skeleton = ({ className }: { className: string }) => (
   <div className={cn("animate-pulse bg-zinc-200 dark:bg-zinc-800 rounded-lg", className)} />
 );
 
-// Dynamic imports for heavy chart components
+// Alias for backward-compatibility with existing JSX using ChartComponents.XYZ
 const ChartComponents = {
-  ResponsiveContainer: React.lazy(() => import('recharts').then(m => ({ default: m.ResponsiveContainer }))),
-  LineChart: React.lazy(() => import('recharts').then(m => ({ default: m.LineChart }))),
-  Line: React.lazy(() => import('recharts').then(m => ({ default: m.Line }))),
-  XAxis: React.lazy(() => import('recharts').then(m => ({ default: m.XAxis }))),
-  YAxis: React.lazy(() => import('recharts').then(m => ({ default: m.YAxis }))),
-  CartesianGrid: React.lazy(() => import('recharts').then(m => ({ default: m.CartesianGrid }))),
-  Tooltip: React.lazy(() => import('recharts').then(m => ({ default: m.Tooltip }))),
-  PieChart: React.lazy(() => import('recharts').then(m => ({ default: m.PieChart }))),
-  Pie: React.lazy(() => import('recharts').then(m => ({ default: m.Pie }))),
-  Cell: React.lazy(() => import('recharts').then(m => ({ default: m.Cell }))),
-  Legend: React.lazy(() => import('recharts').then(m => ({ default: m.Legend }))),
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 };
 
 interface DashboardViewProps {
