@@ -118,7 +118,7 @@ export const determineWoodCategory = (condition: WoodCondition, length: number, 
   }
 
   if (condition === 'Super kecil') {
-    if (length === 130 && diameter >= 15 && diameter <= 19) {
+    if ((length === 130 || length === 100) && diameter >= 15 && diameter <= 19) {
       return `Super kecil`;
     }
     return null;
