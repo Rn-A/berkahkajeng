@@ -24,19 +24,12 @@ export default defineConfig(({ mode }) => {
             'vendor-core': ['react', 'react-dom'],
             'vendor-recharts': ['recharts'],
             'vendor-icons': ['lucide-react'],
-            'vendor-motion': ['motion/react'],
+            'vendor-motion': ['motion'],
             'vendor-utils': ['clsx', 'tailwind-merge'],
           }
         }
       },
-      chunkSizeWarningLimit: 1000,
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: true,
-          drop_debugger: true,
-        }
-      }
+      chunkSizeWarningLimit: 1000
     }
   };
 });
