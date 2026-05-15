@@ -17,9 +17,7 @@ import {
   ChevronLeft,
   Edit2,
   Minus,
-  Plus as PlusIcon,
-  ClipboardList,
-  MessageSquare
+  Plus as PlusIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -185,17 +183,10 @@ export default function PurchaseView({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [activeInputMode, setActiveInputMode] = useState<string | null>('manual');
   const [manualDiameter, setManualDiameter] = useState<string>('');
-  const [manualQuantity, setManualQuantity] = useState<string>('1');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
-  const [showBulkInput, setShowBulkInput] = useState(false);
-  const [bulkInputText, setBulkInputText] = useState('');
-  
-  // New state for range input quantity editing
-  const [editingRangeDiameter, setEditingRangeDiameter] = useState<number | null>(null);
-  const [tempRangeLogCount, setTempRangeLogCount] = useState<string>('');
 
   const [editingLogDiameter, setEditingLogDiameter] = useState<number | null>(null);
   const [tempLogCount, setTempLogCount] = useState<string>('');
@@ -293,21 +284,6 @@ export default function PurchaseView({
       categories: activeSet.categories.filter(cat => cat.id !== id)
     });
     if (selectedCategoryId === id) setSelectedCategoryId(null);
-  };
-
-  const getAutoCategory = (diameter: number) => {
-    if (!activeSet) return null;
-    if (diameter < 10) {
-      return activeSet.categories.find(c => c.woodType === sessionWoodType && c.condition === 'X') || null;
-    }
-    const inferredName = determineWoodCategory(sessionCondition, sessionLength, diameter);
-    if (!inferredName) return null;
-    return activeSet.categories.find(c => 
-      c.woodType === sessionWoodType && 
-      c.length === sessionLength && 
-      c.condition === sessionCondition &&
-      c.name === inferredName
-    ) || null;
   };
 
   const addLogAuto = (diameter: number) => {
@@ -451,28 +427,6 @@ export default function PurchaseView({
     };
 
     setActiveSet({ ...activeSet, categories: newCategories });
-  };
-
-  const handleBulkInput = () => {
-    if (!activeSet) return;
-    
-    // Pecah teks berdasarkan spasi, koma, atau baris baru
-    const diameters = bulkInputText
-      .split(/[\s,\n]+/)
-      .map(d => parseInt(d))
-      .filter(d => !isNaN(d) && d > 0);
-      
-    if (diameters.length === 0) {
-      showToast('Tidak ada diameter valid yang ditemukan', 'error');
-      return;
-    }
-    
-    // Gunakan addLogAuto yang sudah ada untuk kategorisasi otomatis
-    diameters.forEach(d => addLogAuto(d));
-    
-    setBulkInputText('');
-    setShowBulkInput(false);
-    showToast(`Berhasil menambahkan ${diameters.length} batang kayu`, 'success');
   };
 
   const setLogCountByDiameter = (categoryId: string, diameter: number, count: number) => {
@@ -854,19 +808,10 @@ export default function PurchaseView({
             </div>
 
             <div className="mt-6 border-t border-zinc-100 dark:border-zinc-800 pt-6">
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-[10px] items-center font-bold text-zinc-400 uppercase tracking-widest flex gap-2">
-                  <Calculator size={14} />
-                  Input Diameter (Mode Pencatat)
-                </label>
-                <button
-                  onClick={() => setShowBulkInput(true)}
-                  className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1.5 rounded-lg transition-all active:scale-95 shadow-sm border border-blue-100 dark:border-blue-900/30"
-                >
-                  <ClipboardList size={14} />
-                  Salin/Tempel Data
-                </button>
-              </div>
+              <label className="text-[10px] items-center font-bold text-zinc-400 uppercase tracking-widest mb-3 flex gap-2">
+                <Calculator size={14} />
+                Input Diameter (Mode Pencatat)
+              </label>
 
               <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4">
                 <button
@@ -908,61 +853,26 @@ export default function PurchaseView({
                 {activeInputMode === 'manual' ? (
                   <motion.div key="manual" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-4 rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 flex flex-col justify-center bg-zinc-50 dark:bg-zinc-900/50">
                     <div className="flex gap-2">
-                      <div className="flex-[2] relative">
-                        <label className="absolute -top-2 left-3 bg-zinc-50 dark:bg-zinc-900 px-1 text-[8px] font-bold text-zinc-400 uppercase tracking-tighter z-10">Diameter</label>
-                        <input
-                          autoFocus
-                          type="number"
-                          min="0"
-                          className="input-field w-full py-4 px-4 text-[15px] font-mono text-center font-bold tracking-widest dark:bg-zinc-800 dark:text-white border-2 border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-white shadow-inner"
-                          placeholder="Dia..."
-                          value={manualDiameter}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setManualDiameter(val === '' ? '' : Math.max(0, parseInt(val)).toString());
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && manualDiameter) {
-                              const qty = parseInt(manualQuantity) || 1;
-                              for(let i=0; i<qty; i++) addLogAuto(Math.max(0, parseInt(manualDiameter)));
-                              setManualDiameter('');
-                              setManualQuantity('1');
-                            }
-                          }}
-                        />
-                      </div>
-                      
-                      <div className="flex-1 relative">
-                        <label className="absolute -top-2 left-3 bg-zinc-50 dark:bg-zinc-900 px-1 text-[8px] font-bold text-zinc-400 uppercase tracking-tighter z-10">Jumlah</label>
-                        <input
-                          type="number"
-                          min="1"
-                          className="input-field w-full py-4 px-2 text-[15px] font-mono text-center font-bold dark:bg-zinc-800 dark:text-white border-2 border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-white shadow-inner"
-                          value={manualQuantity}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setManualQuantity(val === '' ? '' : Math.max(1, parseInt(val)).toString());
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && manualDiameter) {
-                              const qty = parseInt(manualQuantity) || 1;
-                              for(let i=0; i<qty; i++) addLogAuto(Math.max(0, parseInt(manualDiameter)));
-                              setManualDiameter('');
-                              setManualQuantity('1');
-                            }
-                          }}
-                        />
-                      </div>
-
-                      <button
-                        onClick={() => { 
-                          if (manualDiameter) { 
-                            const qty = parseInt(manualQuantity) || 1;
-                            for(let i=0; i<qty; i++) addLogAuto(Math.max(0, parseInt(manualDiameter))); 
-                            setManualDiameter(''); 
-                            setManualQuantity('1');
-                          } 
+                      <input
+                        autoFocus
+                        type="number"
+                        min="0"
+                        className="input-field w-full py-4 px-4 text-[15px] font-mono text-center font-bold tracking-widest dark:bg-zinc-800 dark:text-white border-2 border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-white shadow-inner"
+                        placeholder="Ketik 50up atau lainnya..."
+                        value={manualDiameter}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setManualDiameter(val === '' ? '' : Math.max(0, parseInt(val)).toString());
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && manualDiameter) {
+                            addLogAuto(Math.max(0, parseInt(manualDiameter)));
+                            setManualDiameter('');
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => { if (manualDiameter) { addLogAuto(Math.max(0, parseInt(manualDiameter))); setManualDiameter(''); } }}
                         className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-6 rounded-xl shrink-0 hover:bg-zinc-800 dark:hover:bg-zinc-200 active:scale-95 transition-all shadow-md"
                       >
                         <Plus size={32} />
@@ -976,99 +886,12 @@ export default function PurchaseView({
                       <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">Pilih Diameter ({activeInputMode}):</span>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
-                        {Array.from({ length: 10 }, (_, i) => parseInt(activeInputMode.split('-')[0]) + i).map(d => {
-                          const targetCat = getAutoCategory(d);
-                          const count = targetCat ? targetCat.logs.filter(l => l.diameter === d).length : 0;
-                          const isEditing = editingRangeDiameter === d;
-
-                          return (
-                            <div key={d} className="flex flex-col bg-white dark:bg-zinc-900 rounded-xl border-2 border-zinc-100 dark:border-zinc-800 p-2.5 shadow-sm transition-all hover:border-zinc-300 dark:hover:border-zinc-700">
-                              <div className="flex justify-between items-center mb-2.5 px-1">
-                                <span className="font-black text-sm dark:text-white">Ø {d}</span>
-                                <span className="text-[10px] font-bold text-zinc-400 uppercase">{count} bt</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <button 
-                                  onClick={() => {
-                                    const cat = getAutoCategory(d);
-                                    if (cat && count > 0) setLogCountByDiameter(cat.id, d, count - 1);
-                                  }}
-                                  className="flex-1 h-8 rounded-lg border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all active:scale-90"
-                                >
-                                  <Minus size={12} />
-                                </button>
-                                
-                                <div className="relative flex-[1.5]">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    className="w-full h-8 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg text-center font-bold text-xs dark:text-white focus:outline-none focus:ring-1 focus:ring-zinc-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-text"
-                                    value={isEditing ? tempRangeLogCount : count}
-                                    onFocus={() => {
-                                      setEditingRangeDiameter(d);
-                                      setTempRangeLogCount(count.toString());
-                                    }}
-                                    onChange={(e) => setTempRangeLogCount(e.target.value)}
-                                    onBlur={() => {
-                                      const val = parseInt(tempRangeLogCount);
-                                      const finalVal = (!isNaN(val) && val >= 0) ? val : 0;
-                                      
-                                      // Jika kategori belum ada, buat dulu dengan addLogAuto(d) baru kemudian setLogCount
-                                      if (finalVal > 0) {
-                                        let cat = getAutoCategory(d);
-                                        if (!cat) {
-                                          addLogAuto(d); // Buat kategori
-                                          // Tunggu re-render untuk mendapatkan cat terbaru mungkin sulit, 
-                                          // tapi setLogCountByDiameter akan dipanggil setelah state update.
-                                          // Namun karena state update async, kita butuh cara pasti.
-                                          // Untungnya addLogAuto sudah mengupdate activeSet.
-                                          setTimeout(() => {
-                                             // Re-check category after addLogAuto
-                                             // Note: This is a bit hacky but works for UI
-                                          }, 0);
-                                        }
-                                        // Mencari categoryId yang tepat (bisa pakai determineWoodCategory)
-                                        const inferredName = determineWoodCategory(sessionCondition, sessionLength, d);
-                                        const targetCat = activeSet?.categories.find(c => 
-                                          c.woodType === sessionWoodType && 
-                                          c.length === sessionLength && 
-                                          c.condition === sessionCondition &&
-                                          c.name === inferredName
-                                        );
-                                        if (targetCat) {
-                                          setLogCountByDiameter(targetCat.id, d, finalVal);
-                                        } else {
-                                          // Fallback: use addLogAuto multiple times if needed, 
-                                          // but setLogCountByDiameter is more direct.
-                                          // For simplicity, if it doesn't exist, we use addLogAuto(d) 
-                                          // and then we'd need to find the ID.
-                                          // Let's just call addLogAuto(d) and then set count.
-                                          addLogAuto(d);
-                                          // Wait for it to be created... actually let's just make addLogAuto 
-                                          // able to handle quantity.
-                                        }
-                                      } else if (targetCat) {
-                                        setLogCountByDiameter(targetCat.id, d, 0);
-                                      }
-                                      setEditingRangeDiameter(null);
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                                    }}
-                                  />
-                                </div>
-
-                                <button 
-                                  onClick={() => addLogAuto(d)}
-                                  className="flex-1 h-8 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center hover:opacity-90 transition-all active:scale-90"
-                                >
-                                  <Plus size={12} />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
+                      <div className="grid grid-cols-5 gap-3 md:gap-4">
+                        {Array.from({ length: 10 }, (_, i) => parseInt(activeInputMode.split('-')[0]) + i).map(d => (
+                          <button key={d} onClick={() => addLogAuto(d)} className="w-full aspect-square rounded-xl bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-700 font-bold text-[17px] dark:text-white hover:bg-zinc-900 dark:hover:bg-white hover:text-white dark:hover:text-zinc-900 hover:border-zinc-900 dark:hover:border-white transition-all active:scale-95 flex items-center justify-center shadow-sm">
+                            {d}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </motion.div>
@@ -1497,146 +1320,6 @@ export default function PurchaseView({
                   </div>
                 </div>
               )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Bulk Input Modal */}
-      <AnimatePresence>
-        {showBulkInput && (
-          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              onClick={() => setShowBulkInput(false)} 
-              className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" 
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
-              exit={{ opacity: 0, scale: 0.95, y: 20 }} 
-              className="relative w-full max-w-lg bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800"
-            >
-              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center">
-                    <ClipboardList size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold dark:text-white">Salin/Tempel Data</h3>
-                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Input Masal dari Kertas (Tally Sheet)</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowBulkInput(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
-                  <X size={20} className="dark:text-zinc-400" />
-                </button>
-              </div>
-              
-              <div className="p-0 flex-1 overflow-hidden flex flex-col">
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 border-b border-emerald-100 dark:border-emerald-900/20 flex gap-3 shrink-0">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                    <Calculator size={16} />
-                  </div>
-                  <p className="text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed font-medium">
-                    Masukkan jumlah batang untuk setiap diameter sesuai catatan lapangan. <br/>
-                    Sistem otomatis menghitung volume berdasarkan panjang <strong>{sessionLength} cm</strong>.
-                  </p>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-zinc-50/50 dark:bg-zinc-950/20 custom-scrollbar">
-                  {Array.from({ length: 41 }, (_, i) => 10 + i).map(d => {
-                    const targetCat = getAutoCategory(d);
-                    const count = targetCat ? targetCat.logs.filter(l => l.diameter === d).length : 0;
-                    const volPerBatang = calculateVolume(d, sessionLength);
-                    const isEditing = editingRangeDiameter === d;
-
-                    return (
-                      <div key={d} className="bg-white dark:bg-zinc-900 rounded-2xl p-4 flex items-center justify-between shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-shadow">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-lg text-zinc-900 dark:text-white">Ø {d} cm</span>
-                          <span className="text-[11px] font-mono text-zinc-400">{volPerBatang.toFixed(4)} m³</span>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <button 
-                            onClick={() => {
-                              const cat = getAutoCategory(d);
-                              if (cat && count > 0) setLogCountByDiameter(cat.id, d, count - 1);
-                            }}
-                            className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all active:scale-90"
-                          >
-                            <Minus size={18} />
-                          </button>
-                          
-                          <div className="w-16 flex flex-col items-center">
-                            <input
-                              type="number"
-                              min="0"
-                              className="w-full bg-transparent text-center font-black text-xl dark:text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={isEditing ? tempRangeLogCount : count}
-                              onFocus={() => {
-                                setEditingRangeDiameter(d);
-                                setTempRangeLogCount(count.toString());
-                              }}
-                              onChange={(e) => setTempRangeLogCount(e.target.value)}
-                              onBlur={() => {
-                                const val = parseInt(tempRangeLogCount);
-                                const finalVal = (!isNaN(val) && val >= 0) ? val : 0;
-                                
-                                if (finalVal > 0) {
-                                  let cat = getAutoCategory(d);
-                                  if (!cat) addLogAuto(d);
-                                  
-                                  const inferredName = determineWoodCategory(sessionCondition, sessionLength, d);
-                                  const target = activeSet?.categories.find(c => 
-                                    c.woodType === sessionWoodType && 
-                                    c.length === sessionLength && 
-                                    c.condition === sessionCondition &&
-                                    c.name === inferredName
-                                  );
-                                  if (target) setLogCountByDiameter(target.id, d, finalVal);
-                                } else if (targetCat) {
-                                  setLogCountByDiameter(targetCat.id, d, 0);
-                                }
-                                setEditingRangeDiameter(null);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                              }}
-                            />
-                            <div className="w-10 h-[2px] bg-zinc-200 dark:bg-zinc-700 mt-0.5 rounded-full" />
-                          </div>
-
-                          <button 
-                            onClick={() => addLogAuto(d)}
-                            className="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 transition-all active:scale-90 shadow-lg shadow-emerald-500/20"
-                          >
-                            <Plus size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="p-6 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
-                  <button
-                    onClick={() => setShowBulkInput(false)}
-                    className="w-full py-4 px-6 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-zinc-900/20 dark:shadow-white/10"
-                  >
-                    Selesai & Tutup
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-4 bg-zinc-50 dark:bg-zinc-800/30 border-t border-zinc-100 dark:border-zinc-800 text-center">
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-2">
-                  <MessageSquare size={12} />
-                  Sistem akan mengelompokkan kategori secara otomatis
-                </p>
-              </div>
             </motion.div>
           </div>
         )}
