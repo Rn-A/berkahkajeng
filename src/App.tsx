@@ -22,20 +22,31 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WoodSet, InventoryItem, Sale, DashboardData, User, AuthState, Supplier, Customer, Expense, AuditLog } from './types';
-const DashboardView = React.lazy(() => import('./components/DashboardView'));
-const PurchaseView = React.lazy(() => import('./components/PurchaseView'));
-const InventoryView = React.lazy(() => import('./components/InventoryView'));
-const SalesView = React.lazy(() => import('./components/SalesView'));
-const ReportsView = React.lazy(() => import('./components/ReportsView'));
-const SuppliersView = React.lazy(() => import('./components/SuppliersView'));
-const CustomersView = React.lazy(() => import('./components/CustomersView'));
-const ExpensesView = React.lazy(() => import('./components/ExpensesView'));
-const AuditLogsView = React.lazy(() => import('./components/AuditLogsView.tsx'));
-const UserManagementView = React.lazy(() => import('./components/UserManagementView'));
-const ProfileView = React.lazy(() => import('./components/ProfileView'));
-const Login = React.lazy(() => import('./components/Login'));
-const ForgotPasswordView = React.lazy(() => import('./components/ForgotPasswordView'));
-const ConfirmationModal = React.lazy(() => import('./components/ConfirmationModal'));
+const lazyWithRetry = (componentImport: () => Promise<any>) =>
+  React.lazy(async () => {
+    try {
+      return await componentImport();
+    } catch (error) {
+      console.error('Chunk load error, refreshing...', error);
+      window.location.reload();
+      return { default: () => null };
+    }
+  });
+
+const DashboardView = lazyWithRetry(() => import('./components/DashboardView'));
+const PurchaseView = lazyWithRetry(() => import('./components/PurchaseView'));
+const InventoryView = lazyWithRetry(() => import('./components/InventoryView'));
+const SalesView = lazyWithRetry(() => import('./components/SalesView'));
+const ReportsView = lazyWithRetry(() => import('./components/ReportsView'));
+const SuppliersView = lazyWithRetry(() => import('./components/SuppliersView'));
+const CustomersView = lazyWithRetry(() => import('./components/CustomersView'));
+const ExpensesView = lazyWithRetry(() => import('./components/ExpensesView'));
+const AuditLogsView = lazyWithRetry(() => import('./components/AuditLogsView.tsx'));
+const UserManagementView = lazyWithRetry(() => import('./components/UserManagementView'));
+const ProfileView = lazyWithRetry(() => import('./components/ProfileView'));
+const Login = lazyWithRetry(() => import('./components/Login'));
+const ForgotPasswordView = lazyWithRetry(() => import('./components/ForgotPasswordView'));
+const ConfirmationModal = lazyWithRetry(() => import('./components/ConfirmationModal'));
 import { cn } from './lib/utils';
 
 type ViewType = 'dashboard' | 'purchase' | 'inventory' | 'sales' | 'reports' | 'suppliers' | 'customers' | 'expenses' | 'audit-logs' | 'users' | 'profile' | 'forgot-password';
@@ -255,9 +266,11 @@ export default function App() {
     }
   }, [fetchWithAuth, auth.user?.role, handleLogout]);
 
+  const lastFetchedView = React.useRef<string | null>(null);
   useEffect(() => {
-    if (auth.isAuthenticated) {
+    if (auth.isAuthenticated && lastFetchedView.current !== activeView) {
       fetchData(activeView);
+      lastFetchedView.current = activeView;
     }
   }, [fetchData, auth.isAuthenticated, activeView]);
 
