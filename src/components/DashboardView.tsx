@@ -270,19 +270,19 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
     const currentExpenses = expenses.filter(e => isWithinPeriod(e.date));
 
     const totalPurchaseVolume = currentPurchases.reduce((sum, p) => sum + (Number(p.total_volume) || 0), 0);
-    const totalPurchaseValue = currentPurchases.reduce((sum, p) => sum + (Number(p.total_value) || 0), 0);
+    const totalPurchaseValue = roundPrice(currentPurchases.reduce((sum, p) => sum + (Number(p.total_value) || 0), 0));
     
     const totalSalesVolume = currentSales.reduce((sum, s) => {
       const vol = s.items?.reduce((v, item) => v + Number(item.volume || 0), 0) || 0;
       return sum + vol;
     }, 0);
-    const totalSalesRevenue = currentSales.reduce((sum, s) => sum + (Number(s.total_revenue) || 0), 0);
-    const totalSalesProfit = currentSales.reduce((sum, s) => sum + (Number(s.total_profit) || 0), 0);
+    const totalSalesRevenue = roundPrice(currentSales.reduce((sum, s) => sum + (Number(s.total_revenue) || 0), 0));
+    const totalSalesProfit = roundPrice(currentSales.reduce((sum, s) => sum + (Number(s.total_profit) || 0), 0));
     
     const totalExpensesAmt = roundPrice(currentExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0));
     
-    const avgPurchasePrice = totalPurchaseVolume > 0 ? totalPurchaseValue / totalPurchaseVolume : 0;
-    const avgSalesPrice = totalSalesVolume > 0 ? totalSalesRevenue / totalSalesVolume : 0;
+    const avgPurchasePrice = totalPurchaseVolume > 0 ? roundPrice(totalPurchaseValue / totalPurchaseVolume) : 0;
+    const avgSalesPrice = totalSalesVolume > 0 ? roundPrice(totalSalesRevenue / totalSalesVolume) : 0;
     const netCashflow = roundPrice(totalSalesRevenue - totalPurchaseValue - totalExpensesAmt);
     const totalNetProfit = roundPrice(totalSalesProfit - totalExpensesAmt);
 

@@ -104,8 +104,8 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
       return acc + s.items.reduce((sum, item) => sum + Number(item.volume), 0);
     }, 0);
 
-    const avgPurchasePrice = totalPurchaseVolume > 0 ? totalPurchaseValue / totalPurchaseVolume : 0;
-    const avgSalesPrice = totalSalesVolume > 0 ? totalRevenue / totalSalesVolume : 0;
+    const avgPurchasePrice = totalPurchaseVolume > 0 ? roundPrice(totalPurchaseValue / totalPurchaseVolume) : 0;
+    const avgSalesPrice = totalSalesVolume > 0 ? roundPrice(totalRevenue / totalSalesVolume) : 0;
 
     return { 
       totalRevenue, 
