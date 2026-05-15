@@ -242,7 +242,7 @@ export default function App() {
         createNewSet();
       }
     }
-  }, [fetchData, auth.isAuthenticated, activeView]);
+  }, [fetchData, auth.isAuthenticated, activeView, activeSet, createNewSet]);
 
   const handleLogin = async (credentials: any) => {
     try {
@@ -272,13 +272,13 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setAuth({ user: null, isAuthenticated: false });
     localStorage.removeItem('logyard_auth');
     setActiveView('dashboard');
-  };
+  }, []);
 
-  const createNewSet = () => {
+  const createNewSet = useCallback(() => {
     const newSet: WoodSet = {
       id: crypto.randomUUID(),
       supplierName: '',
@@ -291,7 +291,7 @@ export default function App() {
       total_value: 0
     };
     setActiveSet(newSet);
-  };
+  }, []);
 
   const handleSaveSet = async (setOverride?: any) => {
     const setToSave = setOverride || activeSet;
