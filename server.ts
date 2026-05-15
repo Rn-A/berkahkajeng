@@ -129,7 +129,10 @@ export async function initDB() {
     await connection.query(`CREATE TABLE IF NOT EXISTS suppliers (id VARCHAR(36) PRIMARY KEY, name VARCHAR(255) NOT NULL, phone VARCHAR(20), address TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
     await connection.query(`CREATE TABLE IF NOT EXISTS customers (id VARCHAR(36) PRIMARY KEY, name VARCHAR(255) NOT NULL, phone VARCHAR(20), address TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
     await connection.query(`CREATE TABLE IF NOT EXISTS expenses (id VARCHAR(36) PRIMARY KEY, category VARCHAR(100) NOT NULL, description TEXT, amount DECIMAL(15, 2) NOT NULL, date DATE NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-    await connection.query(`CREATE TABLE IF NOT EXISTS audit_logs (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, action VARCHAR(255), details TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL)`);
+    await connection.query(`CREATE TABLE IF NOT EXISTS audit_logs (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, action VARCHAR(255), details TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL, INDEX(created_at))`);
+    try {
+      await connection.query(`ALTER TABLE audit_logs ADD INDEX idx_audit_created_at (created_at)`);
+    } catch (e) { /* ignore */ }
     await connection.query(`CREATE TABLE IF NOT EXISTS wood_types (name VARCHAR(100) PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
 
     // Isi data awal jenis kayu
@@ -843,10 +846,14 @@ apiRouter.delete("/sales/:id", authenticateToken, async (req, res) => {
 apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
   try {
     if (dbConnected && pool) {
-      res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=300');
+      res.setHeader('Cache-Control', 'private, max-age=10, stale-while-revalidate=60');
       const [stock]: any = await pool!.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM inventory");
       const [purch]: any = await pool!.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM wood_sets");
-      const [sales]: any = await pool!.query("SELECT SUM(total_revenue) as total_revenue, SUM(total_profit) as total_profit, SUM(total_volume) as total_volume FROM (SELECT s.total_revenue, s.total_profit, SUM(si.volume) as total_volume FROM sales s JOIN sales_items si ON s.id = si.sale_id GROUP BY s.id) as sales_agg");
+      
+      // Optimized sales query: total_revenue and total_profit are already in sales table
+      const [sales]: any = await pool!.query("SELECT SUM(total_revenue) as total_revenue, SUM(total_profit) as total_profit FROM sales");
+      const [salesVol]: any = await pool!.query("SELECT SUM(volume) as total_volume FROM sales_items");
+      
       const [expenses]: any = await pool!.query("SELECT SUM(amount) as total_expenses FROM expenses");
 
       const [purchTrends]: any = await pool!.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_volume) as purchase_volume FROM wood_sets GROUP BY month ORDER BY MIN(date)");
@@ -858,7 +865,11 @@ apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
       res.json({
         inventory: stock[0] || { total_volume: 0, total_value: 0 },
         purchases: purch[0] || { total_volume: 0, total_value: 0 },
-        sales: sales[0] || { total_revenue: 0, total_profit: 0, total_volume: 0 },
+        sales: { 
+          total_revenue: sales[0]?.total_revenue || 0, 
+          total_profit: sales[0]?.total_profit || 0, 
+          total_volume: salesVol[0]?.total_volume || 0 
+        },
         expenses: expenses[0] || { total_expenses: 0 },
         stockComposition,
         trends: {

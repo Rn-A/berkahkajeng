@@ -16,6 +16,26 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       allowedHosts: true,
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-recharts': ['recharts'],
+            'vendor-icons': ['lucide-react'],
+            'vendor-motion': ['motion/react'],
+            'vendor-utils': ['date-fns', 'clsx', 'tailwind-merge'],
+          }
+        }
+      },
+      chunkSizeWarningLimit: 1000,
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+        }
+      }
     }
   };
 });

@@ -1,8 +1,15 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, Legend, LineChart, Line
-} from 'recharts';
+// Recharts components deferred for better initial render performance
+const XAxis = React.lazy(() => import('recharts').then(m => ({ default: m.XAxis })));
+const YAxis = React.lazy(() => import('recharts').then(m => ({ default: m.YAxis })));
+const CartesianGrid = React.lazy(() => import('recharts').then(m => ({ default: m.CartesianGrid })));
+const Tooltip = React.lazy(() => import('recharts').then(m => ({ default: m.Tooltip })));
+const ResponsiveContainer = React.lazy(() => import('recharts').then(m => ({ default: m.ResponsiveContainer })));
+const PieChart = React.lazy(() => import('recharts').then(m => ({ default: m.PieChart })));
+const Pie = React.lazy(() => import('recharts').then(m => ({ default: m.Pie })));
+const Cell = React.lazy(() => import('recharts').then(m => ({ default: m.Cell })));
+const Legend = React.lazy(() => import('recharts').then(m => ({ default: m.Legend })));
+const LineChart = React.lazy(() => import('recharts').then(m => ({ default: m.LineChart })));
+const Line = React.lazy(() => import('recharts').then(m => ({ default: m.Line })));
 import { TrendingUp, Package, ShoppingCart, Wallet, ArrowUpRight, CreditCard, Activity, Download, Database } from 'lucide-react';
 import { DashboardData, Sale, WoodSet, InventoryItem, Expense } from '../types';
 import { roundPrice } from '../lib/utils';
@@ -355,6 +362,13 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
     ] : [])
   ];
 
+  const ChartPlaceholder = () => (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-50/50 dark:bg-zinc-900/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 animate-pulse">
+      <Activity size={24} className="text-zinc-300 dark:text-zinc-700 mb-2" />
+      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Menyiapkan Grafik...</span>
+    </div>
+  );
+
   return (
     <div className="p-4 md:p-6 space-y-6 md:space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
@@ -371,8 +385,9 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
                 className={`px-3 py-1.5 text-xs font-bold capitalize rounded-lg transition-colors ${
                   period === p 
                     ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow' 
-                    : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
+                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                 }`}
+                aria-label={`Lihat periode ${p}`}
               >
                 {p}
               </button>
@@ -384,7 +399,7 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
       {userRole === 'owner' && (
         <div className="bg-zinc-900 dark:bg-white p-6 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
-            <h3 className="text-white dark:text-zinc-900 font-bold text-lg">Pusat Cadangan Data (Backup)</h3>
+            <h2 className="text-white dark:text-zinc-900 font-bold text-lg">Pusat Cadangan Data (Backup)</h2>
             <p className="text-zinc-400 dark:text-zinc-500 text-sm">Ekspor seluruh database ke format JSON untuk arsip keamanan.</p>
           </div>
           <button 
@@ -437,10 +452,10 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
       {/* Financial Trend (Line Chart) — hanya owner */}
       {userRole === 'owner' && (
       <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-        <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-6 flex items-center gap-2">
+        <h2 className="text-sm font-bold text-zinc-900 dark:text-white mb-6 flex items-center gap-2">
           <TrendingUp size={16} className="text-emerald-500" />
           Tren Keuangan ({period})
-        </h3>
+        </h2>
 
         {renderFinancialLegend([
           { value: 'Pendapatan (Rp)', color: '#10b981' },
@@ -450,35 +465,37 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
         ])}
 
         <div className="h-[350px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
-              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{fontSize: 10, fill: '#a1a1aa'}}
-                width={80}
-                tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`}
-              />
-              <Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
+          <React.Suspense fallback={<ChartPlaceholder />}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{fontSize: 10, fill: '#a1a1aa'}}
+                  width={80}
+                  tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`}
+                />
+                <Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
 
-              <Line type="monotone" dataKey="sales_revenue" name="Pendapatan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              <Line type="monotone" dataKey="purchase_value" name="Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              <Line type="monotone" dataKey="expense_amount" name="Pengeluaran (Rp)" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              <Line type="monotone" dataKey="net_cashflow" name="Arus Kas Bersih (Rp)" stroke="#3b82f6" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 5 }} activeDot={{ r: 7 }} />
-            </LineChart>
-          </ResponsiveContainer>
+                <Line type="monotone" dataKey="sales_revenue" name="Pendapatan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="purchase_value" name="Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="expense_amount" name="Pengeluaran (Rp)" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="net_cashflow" name="Arus Kas Bersih (Rp)" stroke="#3b82f6" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 5 }} activeDot={{ r: 7 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </React.Suspense>
         </div>
       </div>
       )}
 
       {/* Operational Trend Chart (Line Chart) */}
       <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-        <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-6 flex items-center gap-2">
+        <h2 className="text-sm font-bold text-zinc-900 dark:text-white mb-6 flex items-center gap-2">
           <TrendingUp size={16} className="text-emerald-500" />
           Tren Volume & Harga Operasional ({period})
-        </h3>
+        </h2>
 
         {renderOperationalLegend([
           { value: 'Harga Penjualan (Rp)', color: '#10b981' },
@@ -489,77 +506,81 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
         ])}
 
         <div className="h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
-              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
-              
-              {/* Left Y-Axis for Rupiah (Value) */}
-              <YAxis 
-                yAxisId="left" 
-                orientation="left" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fontSize: 10, fill: '#a1a1aa'}} 
-                width={80} 
-                tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`} 
-              />
-              
-              {/* Right Y-Axis for Volume (m³) */}
-              <YAxis 
-                yAxisId="right" 
-                orientation="right" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fontSize: 10, fill: '#a1a1aa'}} 
-                width={40} 
-                tickFormatter={(v) => `${v.toFixed(0)}`}
-              />
-              
-              <Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
+          <React.Suspense fallback={<ChartPlaceholder />}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
+                
+                {/* Left Y-Axis for Rupiah (Value) */}
+                <YAxis 
+                  yAxisId="left" 
+                  orientation="left" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fontSize: 10, fill: '#a1a1aa'}} 
+                  width={80} 
+                  tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`} 
+                />
+                
+                {/* Right Y-Axis for Volume (m³) */}
+                <YAxis 
+                  yAxisId="right" 
+                  orientation="right" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fontSize: 10, fill: '#a1a1aa'}} 
+                  width={40} 
+                  tickFormatter={(v) => `${v.toFixed(0)}`}
+                />
+                
+                <Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
 
-              {/* Rupiah Lines (Left Axis) */}
-              <Line yAxisId="left" type="monotone" dataKey="sales_revenue" name="Harga Penjualan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              <Line yAxisId="left" type="monotone" dataKey="purchase_value" name="Harga Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              
-              {/* Volume Lines (Right Axis) */}
-              <Line yAxisId="right" type="monotone" dataKey="sales_volume" name="Volume Penjualan (m³)" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
-              <Line yAxisId="right" type="monotone" dataKey="purchase_volume" name="Volume Pembelian (m³)" stroke="#eab308" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
-              <Line yAxisId="right" type="monotone" dataKey="stock_volume" name="Volume Stok Tersedia (m³)" stroke="#06b6d4" strokeWidth={4} dot={{ r: 5 }} activeDot={{ r: 8 }} />
-            </LineChart>
-          </ResponsiveContainer>
+                {/* Rupiah Lines (Left Axis) */}
+                <Line yAxisId="left" type="monotone" dataKey="sales_revenue" name="Harga Penjualan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                <Line yAxisId="left" type="monotone" dataKey="purchase_value" name="Harga Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                
+                {/* Volume Lines (Right Axis) */}
+                <Line yAxisId="right" type="monotone" dataKey="sales_volume" name="Volume Penjualan (m³)" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
+                <Line yAxisId="right" type="monotone" dataKey="purchase_volume" name="Volume Pembelian (m³)" stroke="#eab308" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
+                <Line yAxisId="right" type="monotone" dataKey="stock_volume" name="Volume Stok Tersedia (m³)" stroke="#06b6d4" strokeWidth={4} dot={{ r: 5 }} activeDot={{ r: 8 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </React.Suspense>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Stock Composition Volume (Pie) */}
         <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
-          <h3 className="text-[15px] font-extrabold text-zinc-900 dark:text-white mb-8 flex items-center gap-2">
+          <h2 className="text-[15px] font-extrabold text-zinc-900 dark:text-white mb-8 flex items-center gap-2">
             <Package size={18} className="text-blue-500" />
             Komposisi Stok
-          </h3>
+          </h2>
           <div className="flex-1 flex flex-col justify-between">
             <div className="h-56 md:h-64 w-full flex justify-center mb-8">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stockData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={75}
-                    outerRadius={100}
-                    paddingAngle={3}
-                    dataKey="volume"
-                    nameKey="wood_type"
-                    stroke="none"
-                  >
-                    {stockData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={renderPieTooltip} cursor={{fill: 'transparent'}} />
-                </PieChart>
-              </ResponsiveContainer>
+              <React.Suspense fallback={<ChartPlaceholder />}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={stockData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={75}
+                      outerRadius={100}
+                      paddingAngle={3}
+                      dataKey="volume"
+                      nameKey="wood_type"
+                      stroke="none"
+                    >
+                      {stockData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={renderPieTooltip} cursor={{fill: 'transparent'}} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </React.Suspense>
             </div>
             
             <div className="flex flex-col gap-3.5 w-full border-t border-zinc-100 dark:border-zinc-800 pt-6">

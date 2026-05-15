@@ -465,7 +465,10 @@ export default function App() {
     return (
       <React.Suspense fallback={
         <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-          <div className="w-12 h-12 border-4 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-white rounded-full animate-spin"></div>
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-white rounded-full animate-spin"></div>
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest animate-pulse">Menyiapkan Akses...</p>
+          </div>
         </div>
       }>
         {activeView === 'forgot-password' ? (
@@ -476,6 +479,25 @@ export default function App() {
       </React.Suspense>
     );
   }
+
+  // Skeleton Loader for Views
+  const ViewSkeleton = () => (
+    <div className="space-y-8 animate-pulse">
+      <div className="flex justify-between items-end gap-4">
+        <div className="space-y-2">
+          <div className="h-8 w-64 bg-zinc-200 dark:bg-zinc-800 rounded-lg"></div>
+          <div className="h-4 w-96 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg"></div>
+        </div>
+        <div className="h-10 w-32 bg-zinc-200 dark:bg-zinc-800 rounded-lg"></div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-32 bg-zinc-100 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800"></div>
+        ))}
+      </div>
+      <div className="h-96 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm"></div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased">
@@ -537,6 +559,8 @@ export default function App() {
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="w-full flex items-center gap-3 p-3 text-zinc-400 hover:text-white transition-colors"
+            aria-label={isSidebarOpen ? "Tutup menu" : "Buka menu"}
+            title={isSidebarOpen ? "Tutup menu" : "Buka menu"}
           >
             {isSidebarOpen ? <X size={22} /> : <Menu size={22} />}
             {isSidebarOpen && <span className="font-medium">Tutup Menu</span>}
@@ -550,6 +574,7 @@ export default function App() {
           <button
             onClick={() => setIsMobileMenuOpen(true)}
             className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+            aria-label="Buka menu navigasi"
           >
             <Menu size={24} />
           </button>
@@ -603,6 +628,7 @@ export default function App() {
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  aria-label="Tutup menu navigasi"
                 >
                   <X size={20} className="text-white" />
                 </button>
@@ -686,14 +712,7 @@ export default function App() {
               </div>
             </div>
           )}
-          <React.Suspense fallback={
-            <div className="flex-1 flex items-center justify-center p-12">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-4 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-white rounded-full animate-spin"></div>
-                <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest animate-pulse">Menyiapkan Halaman...</p>
-              </div>
-            </div>
-          }>
+          <React.Suspense fallback={<div className="p-4 md:p-8"><ViewSkeleton /></div>}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeView}

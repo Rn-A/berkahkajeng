@@ -11,3 +11,12 @@ createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </StrictMode>,
 );
+
+// Remove initial loader
+const loader = document.getElementById('app-loader');
+if (loader) {
+  setTimeout(() => {
+    loader.style.opacity = '0';
+    setTimeout(() => loader.remove(), 500);
+  }, 100);
+}
