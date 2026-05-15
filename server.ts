@@ -183,14 +183,7 @@ export async function initDB() {
 
 // Start DB init immediately
 initDB().catch(err => console.error("Immediate DB Init Error:", err));
-    console.log(`   Host    : ${process.env.DB_HOST || 'localhost'}`);
-    console.log(`   User    : ${process.env.DB_USER || 'root'}`);
-    console.log(`   Database: ${process.env.DB_NAME || 'berkah_kajeng'}`);
-    console.log(`   Error   : ${error?.message || error}`);
-    console.log("   Pastikan XAMPP/MySQL sudah berjalan dan database 'berkah_kajeng' sudah dibuat.");
-  }
-}
-
+// Diameter grouping helper
 function getDiameterGroup(diameter: number): string {
   if (diameter < 15) return "10-14";
   if (diameter < 20) return "15-19";
@@ -908,25 +901,6 @@ apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
     res.status(500).json({ error: (e as Error).message }); 
   }
 });
-    } else {
-      res.json({
-        inventory: { total_volume: 0, total_value: 0 },
-        purchases: { total_volume: 0, total_value: 0 },
-        sales: { total_revenue: 0, total_profit: 0, total_volume: 0 },
-        expenses: { total_expenses: 0 },
-        stockComposition: [],
-        trends: {
-          purchases: [{ month: 'Jan', purchase_volume: 0 }],
-          sales: [{ month: 'Jan', sales_revenue: 0, sales_profit: 0 }],
-          expenses: [{ month: 'Jan', expense_amount: 0 }]
-        }
-      });
-    }
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
-});
-
 // Suppliers CRUD
 apiRouter.get("/suppliers", authenticateToken, async (req, res) => {
   if (dbConnected && pool) {
