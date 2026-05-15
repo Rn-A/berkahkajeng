@@ -177,7 +177,12 @@ export async function initDB() {
     console.log(`✅ Berhasil terhubung ke MySQL Database '${process.env.DB_NAME || 'berkah_kajeng'}' di host '${process.env.DB_HOST || 'localhost'}'`);
   } catch (error: any) {
     dbConnected = false;
-    console.log(`❌ GAGAL terhubung ke MySQL Database.`);
+    console.error(`❌ GAGAL terhubung ke MySQL Database:`, error.message);
+  }
+}
+
+// Start DB init immediately
+initDB().catch(err => console.error("Immediate DB Init Error:", err));
     console.log(`   Host    : ${process.env.DB_HOST || 'localhost'}`);
     console.log(`   User    : ${process.env.DB_USER || 'root'}`);
     console.log(`   Database: ${process.env.DB_NAME || 'berkah_kajeng'}`);
@@ -838,6 +843,15 @@ apiRouter.delete("/sales/:id", authenticateToken, async (req, res) => {
 const dashboardCache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 30000; // 30 seconds
 
+// Health check endpoint
+apiRouter.get("/health", async (req, res) => {
+  res.json({
+    status: dbConnected ? 'connected' : 'disconnected',
+    serverId: SERVER_ID,
+    dbHost: process.env.DB_HOST ? `${process.env.DB_HOST.substring(0, 5)}...` : 'not set'
+  });
+});
+
 // Combined dashboard endpoint for stability
 apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
   try {
@@ -849,15 +863,15 @@ apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
     
     if (dbConnected && pool) {
       const queries = [
-        pool.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM inventory"),
-        pool.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM wood_sets"),
-        pool.query("SELECT SUM(total_revenue) as total_revenue, SUM(total_profit) as total_profit FROM sales"),
-        pool.query("SELECT SUM(volume) as total_volume FROM sales_items"),
-        pool.query("SELECT SUM(amount) as total_expenses FROM expenses"),
-        pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_volume) as purchase_volume FROM wood_sets GROUP BY month ORDER BY MIN(date)"),
-        pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_revenue) as sales_revenue, SUM(total_profit) as sales_profit FROM sales GROUP BY month ORDER BY MIN(date)"),
-        pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(amount) as expense_amount FROM expenses GROUP BY month ORDER BY MIN(date)"),
-        pool.query("SELECT wood_type, SUM(total_volume) as volume FROM inventory WHERE total_logs > 0 GROUP BY wood_type")
+        pool.query("SELECT COALESCE(SUM(total_volume), 0) as total_volume, COALESCE(SUM(total_value), 0) as total_value FROM inventory"),
+        pool.query("SELECT COALESCE(SUM(total_volume), 0) as total_volume, COALESCE(SUM(total_value), 0) as total_value FROM wood_sets"),
+        pool.query("SELECT COALESCE(SUM(total_revenue), 0) as total_revenue, COALESCE(SUM(total_profit), 0) as total_profit FROM sales"),
+        pool.query("SELECT COALESCE(SUM(volume), 0) as total_volume FROM sales_items"),
+        pool.query("SELECT COALESCE(SUM(amount), 0) as total_expenses FROM expenses"),
+        pool.query("SELECT DATE_FORMAT(date, '%b') as month, COALESCE(SUM(total_volume), 0) as purchase_volume FROM wood_sets GROUP BY month ORDER BY MIN(date)"),
+        pool.query("SELECT DATE_FORMAT(date, '%b') as month, COALESCE(SUM(total_revenue), 0) as sales_revenue, COALESCE(SUM(total_profit), 0) as sales_profit FROM sales GROUP BY month ORDER BY MIN(date)"),
+        pool.query("SELECT DATE_FORMAT(date, '%b') as month, COALESCE(SUM(amount), 0) as expense_amount FROM expenses GROUP BY month ORDER BY MIN(date)"),
+        pool.query("SELECT wood_type, COALESCE(SUM(total_volume), 0) as volume FROM inventory WHERE total_logs > 0 GROUP BY wood_type")
       ];
       const results = await Promise.all(queries);
       const data = {
@@ -879,6 +893,7 @@ apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
       dashboardCache.set(cacheKey, { data, timestamp: Date.now() });
       res.json(data);
     } else {
+      console.warn(`Dashboard request while DB disconnected. ServerID: ${SERVER_ID}`);
       res.json({
         inventory: { total_volume: 0, total_value: 0 },
         purchases: { total_volume: 0, total_value: 0 },
@@ -889,7 +904,8 @@ apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
       });
     }
   } catch (e) { 
-    res.status(500).json({ error: 'Dashboard error' }); 
+    console.error("Dashboard error:", e);
+    res.status(500).json({ error: (e as Error).message }); 
   }
 });
     } else {
@@ -1207,7 +1223,7 @@ app.use((err: any, req: any, res: any, next: any) => {
 // Register API routes
 console.log(`[${SERVER_ID}] Registering API routes at /api`);
 app.use("/api", async (req, res, next) => {
-  if (!dbConnected) {
+  if (!dbConnected || !pool) {
     try {
       await initDB();
     } catch (e) {
@@ -1216,6 +1232,7 @@ app.use("/api", async (req, res, next) => {
   }
   res.setHeader('X-Backend-Server', SERVER_ID);
   res.setHeader('X-API-Request', 'true');
+  res.setHeader('Cache-Control', 'no-store');
   next();
 }, apiRouter);
 
