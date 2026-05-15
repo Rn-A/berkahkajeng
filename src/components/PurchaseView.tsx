@@ -188,6 +188,9 @@ export default function PurchaseView({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
+  const [editingLogDiameter, setEditingLogDiameter] = useState<number | null>(null);
+  const [tempLogCount, setTempLogCount] = useState<string>('');
+
   // Auto Sketch Session States
   const [sessionWoodType, setSessionWoodType] = useState('Jati');
   const [sessionLength, setSessionLength] = useState<number>(200);
@@ -969,19 +972,27 @@ export default function PurchaseView({
                                 <input
                                   type="number"
                                   min="0"
-                                  className="w-12 bg-transparent text-center font-bold text-sm dark:text-white border-b border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                  value={count}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value);
-                                    if (!isNaN(val)) {
-                                      setLogCountByDiameter(activeCategory.id, diamNum, val);
-                                    } else if (e.target.value === '') {
-                                      // Allow empty temporarily while typing
-                                    }
+                                  className="w-12 bg-transparent text-center font-bold text-sm dark:text-white border-b border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-text"
+                                  value={editingLogDiameter === diamNum ? tempLogCount : count}
+                                  onFocus={() => {
+                                    setEditingLogDiameter(diamNum);
+                                    setTempLogCount(count.toString());
                                   }}
-                                  onBlur={(e) => {
-                                    if (e.target.value === '') {
+                                  onChange={(e) => {
+                                    setTempLogCount(e.target.value);
+                                  }}
+                                  onBlur={() => {
+                                    const val = parseInt(tempLogCount);
+                                    if (!isNaN(val) && val >= 0) {
+                                      setLogCountByDiameter(activeCategory.id, diamNum, val);
+                                    } else if (tempLogCount === '' || isNaN(val)) {
                                       setLogCountByDiameter(activeCategory.id, diamNum, 0);
+                                    }
+                                    setEditingLogDiameter(null);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      (e.target as HTMLInputElement).blur();
                                     }
                                   }}
                                 />
