@@ -33,7 +33,7 @@ export default function Login({ onLogin, onForgotPassword }: LoginProps) {
         <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
           <div className="p-8 bg-zinc-900 dark:bg-zinc-950 text-white text-center">
             <div className="w-24 h-24 flex items-center justify-center mx-auto mb-4 bg-black rounded-2xl p-2">
-              <img src="/logo.png" alt="Berkah Kajeng Logo" className="w-full h-full object-contain" />
+              <img src="/logo.png" alt="Berkah Kajeng Logo" className="w-full h-full object-contain" fetchpriority="high" decoding="sync" />
             </div>
             <h1 className="text-2xl font-bold">Berkah Kajeng</h1>
             <p className="text-zinc-400 text-sm mt-1">Sistem Manajemen Pangkalan Kayu</p>

@@ -20,8 +20,11 @@ import {
   Info,
   XCircle
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { WoodSet, InventoryItem, Sale, DashboardData, User, AuthState, Supplier, Customer, Expense, AuditLog } from './types';
+import { cn } from './lib/utils';
+
+import { motion, AnimatePresence } from 'motion/react';
+
 const DashboardView = React.lazy(() => import('./components/DashboardView'));
 const PurchaseView = React.lazy(() => import('./components/PurchaseView'));
 const InventoryView = React.lazy(() => import('./components/InventoryView'));
@@ -36,7 +39,6 @@ const ProfileView = React.lazy(() => import('./components/ProfileView'));
 const Login = React.lazy(() => import('./components/Login'));
 const ForgotPasswordView = React.lazy(() => import('./components/ForgotPasswordView'));
 const ConfirmationModal = React.lazy(() => import('./components/ConfirmationModal'));
-import { cn } from './lib/utils';
 
 type ViewType = 'dashboard' | 'purchase' | 'inventory' | 'sales' | 'reports' | 'suppliers' | 'customers' | 'expenses' | 'audit-logs' | 'users' | 'profile' | 'forgot-password';
 
@@ -707,15 +709,6 @@ export default function App() {
         </header>
 
         <div className="flex-1 overflow-y-auto relative">
-          {/* Loading State Fetch Awal */}
-          {(isLoading || isInitialLoad) && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/50 dark:bg-zinc-950/50 backdrop-blur-sm">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-4 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-white rounded-full animate-spin"></div>
-                <p className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-widest">Memuat Data...</p>
-              </div>
-            </div>
-          )}
           <React.Suspense fallback={
             <div className="flex-1 flex items-center justify-center p-12">
               <div className="flex flex-col items-center gap-4">
