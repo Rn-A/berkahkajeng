@@ -53,6 +53,7 @@ export interface SaleItem {
   length: number;
   condition?: string;
   volume: number;
+  total_logs?: number;
   sale_price_per_m3: number;
   cost_price_per_m3: number;
   subtotal_revenue: number;
@@ -67,6 +68,7 @@ export interface Sale {
   total_revenue: number;
   total_cost: number;
   total_profit: number;
+  total_volume?: number;
   items: SaleItem[];
 }
 

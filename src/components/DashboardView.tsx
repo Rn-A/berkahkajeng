@@ -1,11 +1,26 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, Legend, LineChart, Line
-} from 'recharts';
-import { TrendingUp, Package, ShoppingCart, Wallet, ArrowUpRight, CreditCard, Activity, Download, Database } from 'lucide-react';
+import { TrendingUp, Package, ShoppingCart, Wallet, ArrowUpRight, CreditCard, Activity, Download, Database, LayoutDashboard, Zap, AlertCircle } from 'lucide-react';
 import { DashboardData, Sale, WoodSet, InventoryItem, Expense } from '../types';
-import { roundPrice } from '../lib/utils';
+import { roundPrice, cn } from '../lib/utils';
+
+const Skeleton = ({ className }: { className: string }) => (
+  <div className={cn("animate-pulse bg-zinc-200 dark:bg-zinc-800 rounded-lg", className)} />
+);
+
+// Dynamic imports for heavy chart components
+const ChartComponents = {
+  ResponsiveContainer: React.lazy(() => import('recharts').then(m => ({ default: m.ResponsiveContainer }))),
+  LineChart: React.lazy(() => import('recharts').then(m => ({ default: m.LineChart }))),
+  Line: React.lazy(() => import('recharts').then(m => ({ default: m.Line }))),
+  XAxis: React.lazy(() => import('recharts').then(m => ({ default: m.XAxis }))),
+  YAxis: React.lazy(() => import('recharts').then(m => ({ default: m.YAxis }))),
+  CartesianGrid: React.lazy(() => import('recharts').then(m => ({ default: m.CartesianGrid }))),
+  Tooltip: React.lazy(() => import('recharts').then(m => ({ default: m.Tooltip }))),
+  PieChart: React.lazy(() => import('recharts').then(m => ({ default: m.PieChart }))),
+  Pie: React.lazy(() => import('recharts').then(m => ({ default: m.Pie }))),
+  Cell: React.lazy(() => import('recharts').then(m => ({ default: m.Cell }))),
+  Legend: React.lazy(() => import('recharts').then(m => ({ default: m.Legend }))),
+};
 
 interface DashboardViewProps {
   data: DashboardData | null;
@@ -129,6 +144,15 @@ const renderLineTooltip = (props: any) => {
 
 export default function DashboardView({ data, salesHistory, purchasesHistory, inventory, expenses, userRole = 'mandor' }: DashboardViewProps) {
   const [period, setPeriod] = useState<'hari' | 'minggu' | 'bulan' | 'tahun'>('bulan');
+  const [showCharts, setShowCharts] = React.useState(false);
+
+  // Defer chart rendering to improve TTI
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowCharts(true);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Compute groupings dynamically based on the period
   const groupedData = useMemo(() => {
@@ -148,11 +172,17 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
 
     const allLabels = new Set<string>();
     const labelTime: Record<string, number> = {};
+    const dateCache: Record<string, { label: string, time: number }> = {};
     
     const trackLabel = (dateStr: string) => {
+        if (dateCache[dateStr]) {
+            allLabels.add(dateCache[dateStr].label);
+            return dateCache[dateStr].label;
+        }
         const l = getLabel(dateStr);
         allLabels.add(l);
         const time = new Date(dateStr).getTime();
+        dateCache[dateStr] = { label: l, time };
         if (!labelTime[l] || time < labelTime[l]) {
             labelTime[l] = time;
         }
@@ -173,8 +203,7 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
     salesHistory.forEach(s => {
       const l = trackLabel(s.date);
       if (!sMap[l]) sMap[l] = { vol: 0, rev: 0, profit: 0 };
-      const vol = s.items?.reduce((sum, item) => sum + Number(item.volume || 0), 0) || 0;
-      sMap[l].vol += vol;
+      sMap[l].vol += Number((s as any).total_volume || 0);
       sMap[l].rev += Number(s.total_revenue) || 0;
       sMap[l].profit += Number(s.total_profit) || 0;
     });
@@ -356,7 +385,7 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
   ];
 
   return (
-    <div className="p-4 md:p-6 space-y-6 md:space-y-8 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 md:space-y-8 max-w-7xl mx-auto min-h-screen">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Dashboard Ringkasan</h1>
@@ -415,7 +444,22 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {stats.map((stat: any, i) => (
+        {!showCharts ? (
+          Array(stats.length).fill(0).map((_, i) => (
+            <div key={i} className="bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
+              <div className="flex justify-between items-start">
+                <Skeleton className="w-10 h-10 rounded-xl" />
+                <Skeleton className="w-4 h-4" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-7 w-40" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </div>
+          ))
+        ) : (
+          stats.map((stat: any, i) => (
           <div key={i} className="bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-4">
               <div className={`${stat.color} p-2.5 rounded-xl text-white`}>
@@ -431,8 +475,9 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
               )}
             </div>
           </div>
-        ))}
-      </div>
+        ))
+      )}
+    </div>
 
       {/* Financial Trend (Line Chart) — hanya owner */}
       {userRole === 'owner' && (
@@ -449,27 +494,33 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
           { value: 'Arus Kas Bersih (Rp)', color: '#3b82f6' }
         ])}
 
-        <div className="h-[350px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
-              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{fontSize: 10, fill: '#a1a1aa'}}
-                width={80}
-                tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`}
-              />
-              <Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
+        {showCharts ? (
+          <div className="h-[350px]">
+            <ChartComponents.ResponsiveContainer width="100%" height="100%">
+              <ChartComponents.LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <ChartComponents.CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
+                <ChartComponents.XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
+                <ChartComponents.YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{fontSize: 10, fill: '#a1a1aa'}}
+                  width={80}
+                  tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`}
+                />
+                <ChartComponents.Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
 
-              <Line type="monotone" dataKey="sales_revenue" name="Pendapatan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              <Line type="monotone" dataKey="purchase_value" name="Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              <Line type="monotone" dataKey="expense_amount" name="Pengeluaran (Rp)" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              <Line type="monotone" dataKey="net_cashflow" name="Arus Kas Bersih (Rp)" stroke="#3b82f6" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 5 }} activeDot={{ r: 7 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+                <ChartComponents.Line type="monotone" dataKey="sales_revenue" name="Pendapatan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
+                <ChartComponents.Line type="monotone" dataKey="purchase_value" name="Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
+                <ChartComponents.Line type="monotone" dataKey="expense_amount" name="Pengeluaran (Rp)" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
+                <ChartComponents.Line type="monotone" dataKey="net_cashflow" name="Arus Kas Bersih (Rp)" stroke="#3b82f6" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 5 }} activeDot={{ r: 7 }} isAnimationActive={false} />
+              </ChartComponents.LineChart>
+            </ChartComponents.ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-[350px] flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/20 rounded-xl animate-pulse">
+            <TrendingUp size={32} className="text-zinc-200 dark:text-zinc-700" />
+          </div>
+        )}
       </div>
       )}
 
@@ -488,47 +539,49 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
           { value: 'Volume Stok Tersedia (m³)', color: '#06b6d4' }
         ])}
 
-        <div className="h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
-              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
-              
-              {/* Left Y-Axis for Rupiah (Value) */}
-              <YAxis 
-                yAxisId="left" 
-                orientation="left" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fontSize: 10, fill: '#a1a1aa'}} 
-                width={80} 
-                tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`} 
-              />
-              
-              {/* Right Y-Axis for Volume (m³) */}
-              <YAxis 
-                yAxisId="right" 
-                orientation="right" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fontSize: 10, fill: '#a1a1aa'}} 
-                width={40} 
-                tickFormatter={(v) => `${v.toFixed(0)}`}
-              />
-              
-              <Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
+        {showCharts ? (
+          <div className="h-[400px]">
+            <ChartComponents.ResponsiveContainer width="100%" height="100%">
+              <ChartComponents.LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <ChartComponents.CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
+                <ChartComponents.XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
+                
+                <ChartComponents.YAxis 
+                  yAxisId="left" 
+                  orientation="left" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fontSize: 10, fill: '#a1a1aa'}} 
+                  width={80} 
+                  tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`} 
+                />
+                
+                <ChartComponents.YAxis 
+                  yAxisId="right" 
+                  orientation="right" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fontSize: 10, fill: '#a1a1aa'}} 
+                  width={40} 
+                  tickFormatter={(v) => `${v.toFixed(0)}`}
+                />
+                
+                <ChartComponents.Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
 
-              {/* Rupiah Lines (Left Axis) */}
-              <Line yAxisId="left" type="monotone" dataKey="sales_revenue" name="Harga Penjualan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              <Line yAxisId="left" type="monotone" dataKey="purchase_value" name="Harga Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              
-              {/* Volume Lines (Right Axis) */}
-              <Line yAxisId="right" type="monotone" dataKey="sales_volume" name="Volume Penjualan (m³)" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
-              <Line yAxisId="right" type="monotone" dataKey="purchase_volume" name="Volume Pembelian (m³)" stroke="#eab308" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
-              <Line yAxisId="right" type="monotone" dataKey="stock_volume" name="Volume Stok Tersedia (m³)" stroke="#06b6d4" strokeWidth={4} dot={{ r: 5 }} activeDot={{ r: 8 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+                <ChartComponents.Line yAxisId="left" type="monotone" dataKey="sales_revenue" name="Harga Penjualan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
+                <ChartComponents.Line yAxisId="left" type="monotone" dataKey="purchase_value" name="Harga Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
+                
+                <ChartComponents.Line yAxisId="right" type="monotone" dataKey="sales_volume" name="Volume Penjualan (m³)" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
+                <ChartComponents.Line yAxisId="right" type="monotone" dataKey="purchase_volume" name="Volume Pembelian (m³)" stroke="#eab308" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
+                <ChartComponents.Line yAxisId="right" type="monotone" dataKey="stock_volume" name="Volume Stok Tersedia (m³)" stroke="#06b6d4" strokeWidth={4} dot={{ r: 5 }} activeDot={{ r: 8 }} isAnimationActive={false} />
+              </ChartComponents.LineChart>
+            </ChartComponents.ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-[400px] flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/20 rounded-xl animate-pulse">
+            <TrendingUp size={32} className="text-zinc-200 dark:text-zinc-700" />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -540,28 +593,48 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
           </h3>
           <div className="flex-1 flex flex-col justify-between">
             <div className="h-56 md:h-64 w-full flex justify-center mb-8">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stockData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={75}
-                    outerRadius={100}
-                    paddingAngle={3}
-                    dataKey="volume"
-                    nameKey="wood_type"
-                    stroke="none"
-                  >
-                    {stockData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={renderPieTooltip} cursor={{fill: 'transparent'}} />
-                </PieChart>
-              </ResponsiveContainer>
+              {showCharts ? (
+                <ChartComponents.ResponsiveContainer width="100%" height="100%">
+                  <ChartComponents.PieChart>
+                    <ChartComponents.Pie
+                      data={stockData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={75}
+                      outerRadius={100}
+                      paddingAngle={3}
+                      dataKey="volume"
+                      nameKey="wood_type"
+                      stroke="none"
+                      isAnimationActive={false}
+                    >
+                      {stockData.map((entry, index) => (
+                        <ChartComponents.Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </ChartComponents.Pie>
+                    <ChartComponents.Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-zinc-900 text-white p-3 rounded-xl shadow-2xl border border-white/10 text-xs">
+                              <p className="font-bold mb-1">{data.wood_type}</p>
+                              <p className="text-zinc-400">Volume: <span className="text-white">{data.volume.toFixed(3)} m³</span></p>
+                              <p className="text-zinc-400">Porsi: <span className="text-white">{((data.volume / stockData.reduce((a, b) => a + b.volume, 0)) * 100).toFixed(1)}%</span></p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </ChartComponents.PieChart>
+                </ChartComponents.ResponsiveContainer>
+              ) : (
+                <div className="h-full w-full flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/20 rounded-full animate-pulse">
+                  <Package size={32} className="text-zinc-200 dark:text-zinc-700" />
+                </div>
+              )}
             </div>
-            
             <div className="flex flex-col gap-3.5 w-full border-t border-zinc-100 dark:border-zinc-800 pt-6">
               {stockData.map((entry, index) => (
                 <div key={`legend-${index}`} className="flex items-center justify-between gap-4">

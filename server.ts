@@ -474,20 +474,52 @@ apiRouter.use(async (req, res, next) => {
 apiRouter.get("/sets", authenticateToken, async (req, res) => {
   try {
     if (dbConnected && pool) {
+      // 1. Get all sets
       const [sets]: any = await pool!.query("SELECT * FROM wood_sets ORDER BY date DESC");
-      const detailedSets = await Promise.all(sets.map(async (set: any) => {
-        const [categories]: any = await pool!.query("SELECT * FROM wood_categories WHERE set_id = ?", [set.id]);
-        const detailedCategories = await Promise.all(categories.map(async (cat: any) => {
-          const [logs]: any = await pool!.query("SELECT * FROM log_entries WHERE category_id = ?", [cat.id]);
-          return { ...cat, condition: cat.condition_val, logs };
-        }));
+      if (sets.length === 0) return res.json([]);
+
+      const setIds = sets.map((s: any) => s.id);
+      
+      // 2. Get all categories for these sets in one query
+      const [allCategories]: any = await pool!.query("SELECT * FROM wood_categories WHERE set_id IN (?)", [setIds]);
+      const catIds = allCategories.map((c: any) => c.id);
+
+      // 3. Get all logs for these categories in one query (if any categories exist)
+      let allLogs: any[] = [];
+      if (catIds.length > 0) {
+        [allLogs] = await pool!.query("SELECT * FROM log_entries WHERE category_id IN (?)", [catIds]);
+      }
+
+      // 4. Organize data efficiently using Maps
+      const logsByCategory = new Map();
+      allLogs.forEach(log => {
+        if (!logsByCategory.has(log.category_id)) logsByCategory.set(log.category_id, []);
+        logsByCategory.get(log.category_id).push(log);
+      });
+
+      const categoriesBySet = new Map();
+      allCategories.forEach(cat => {
+        if (!categoriesBySet.has(cat.set_id)) categoriesBySet.set(cat.set_id, []);
+        categoriesBySet.get(cat.set_id).push({
+          ...cat,
+          condition: cat.condition_val,
+          logs: logsByCategory.get(cat.id) || []
+        });
+      });
+
+      const detailedSets = sets.map((set: any) => {
         let d = set.date instanceof Date ? set.date : new Date(set.date);
         let dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        return { ...set, date: dateStr, categories: detailedCategories };
-      }));
+        return {
+          ...set,
+          date: dateStr,
+          categories: categoriesBySet.get(set.id) || []
+        };
+      });
+
       res.json(detailedSets);
     } else {
-    res.json([]);
+      res.json([]);
     }
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
@@ -671,6 +703,7 @@ apiRouter.delete("/sets/:id", authenticateToken, async (req, res) => {
 apiRouter.get("/inventory", authenticateToken, async (req, res) => {
   try {
     if (dbConnected && pool) {
+      res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=600');
       const [inventory]: any = await pool!.query("SELECT * FROM inventory WHERE total_logs > 0 ORDER BY wood_type, length, condition_val, diameter_group");
       res.json(inventory);
     } else {
@@ -684,14 +717,20 @@ apiRouter.get("/inventory", authenticateToken, async (req, res) => {
 apiRouter.get("/sales", authenticateToken, async (req, res) => {
   try {
     if (dbConnected && pool) {
-      const [sales]: any = await pool!.query("SELECT * FROM sales ORDER BY date DESC");
-      const detailedSales = await Promise.all(sales.map(async (sale: any) => {
-        const [items]: any = await pool!.query("SELECT id, sale_id, wood_type, diameter_group, length, condition_val as `condition`, volume, sale_price_per_m3, cost_price_per_m3, subtotal_revenue, subtotal_cost, profit FROM sales_items WHERE sale_id = ?", [sale.id]);
+      const [sales]: any = await pool!.query(`
+        SELECT s.*, CAST(SUM(si.volume) AS DOUBLE) as total_volume 
+        FROM sales s 
+        LEFT JOIN sales_items si ON s.id = si.sale_id 
+        GROUP BY s.id 
+        ORDER BY s.date DESC
+      `);
+      
+      const formattedSales = sales.map((sale: any) => {
         let d = sale.date instanceof Date ? sale.date : new Date(sale.date);
         let dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        return { ...sale, date: dateStr, items };
-      }));
-      res.json(detailedSales);
+        return { ...sale, date: dateStr };
+      });
+      res.json(formattedSales);
     } else {
       res.json([]);
     }
@@ -804,6 +843,7 @@ apiRouter.delete("/sales/:id", authenticateToken, async (req, res) => {
 apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
   try {
     if (dbConnected && pool) {
+      res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=300');
       const [stock]: any = await pool!.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM inventory");
       const [purch]: any = await pool!.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM wood_sets");
       const [sales]: any = await pool!.query("SELECT SUM(total_revenue) as total_revenue, SUM(total_profit) as total_profit, SUM(total_volume) as total_volume FROM (SELECT s.total_revenue, s.total_profit, SUM(si.volume) as total_volume FROM sales s JOIN sales_items si ON s.id = si.sale_id GROUP BY s.id) as sales_agg");

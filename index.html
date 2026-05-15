@@ -8,22 +8,57 @@
     <meta name="author" content="Berkah Kajeng" />
     <meta name="theme-color" content="#1a1a1a" />
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/logo.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/logo.png" />
-    <link rel="shortcut icon" href="/logo.png" />
+    <!-- Performance: Preconnect & Preload -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" href="/logo.png" as="image" fetchpriority="high" />
+    
+    <!-- Fonts: Swap display to prevent FOIT -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-    <!-- Apple Touch Icon -->
-    <link rel="apple-touch-icon" href="/logo.png" />
-
-    <!-- Open Graph / Social -->
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Berkah Kajeng - Sistem Akuntansi Kayu" />
-    <meta property="og:description" content="Aplikasi manajemen dan akuntansi kayu gelondongan untuk pangkalan kayu Berkah Kajeng." />
-    <meta property="og:image" content="/logo.png" />
+    <style>
+      #initial-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: #fafafa;
+        z-index: 9999;
+        transition: opacity 0.5s ease;
+      }
+      @media (prefers-color-scheme: dark) {
+        #initial-loader { background-color: #09090b; }
+      }
+      .loader-logo {
+        width: 64px;
+        height: 64px;
+        animation: pulse 2s infinite ease-in-out;
+      }
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.8; }
+        50% { transform: scale(1.1); opacity: 1; }
+      }
+      .loader-text {
+        margin-top: 16px;
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+        color: #18181b;
+        letter-spacing: -0.025em;
+      }
+      @media (prefers-color-scheme: dark) {
+        .loader-text { color: #f4f4f5; }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="initial-loader">
+        <img src="/logo.png" alt="Loading..." class="loader-logo" />
+        <p class="loader-text">BERKAH KAJENG</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

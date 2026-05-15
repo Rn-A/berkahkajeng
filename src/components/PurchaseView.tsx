@@ -45,6 +45,7 @@ interface PurchaseViewProps {
   onSaveSupplier: (supplier: Supplier) => Promise<void>;
   onDeleteSupplier: (id: string) => Promise<void>;
   userRole?: string;
+  isLoadingHistory?: boolean;
 }
 
 const calculateVolume = (diameterCm: number, lengthCm: number): number => {
@@ -157,6 +158,10 @@ export const determineWoodCategory = (condition: WoodCondition, length: number, 
   return null;
 };
 
+const Skeleton = ({ className }: { className: string }) => (
+  <div className={cn("animate-pulse bg-zinc-200 dark:bg-zinc-800 rounded-lg", className)} />
+);
+
 export default function PurchaseView({ 
   activeSet, 
   setActiveSet, 
@@ -164,6 +169,7 @@ export default function PurchaseView({
   onSave, 
   onDelete, 
   isLoading, 
+  isLoadingHistory,
   createNewSet, 
   suppliers,
   woodTypes,
@@ -1257,7 +1263,18 @@ export default function PurchaseView({
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-                {currentHistoryItems.map(set => {
+                {isLoadingHistory ? (
+                  Array(5).fill(0).map((_, i) => (
+                    <div key={i} className="p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 space-y-3">
+                      <div className="flex justify-between">
+                        <Skeleton className="h-5 w-40" />
+                        <Skeleton className="h-4 w-16" />
+                      </div>
+                      <Skeleton className="h-4 w-60" />
+                      <Skeleton className="h-6 w-32" />
+                    </div>
+                  ))
+                ) : currentHistoryItems.map(set => {
                   const setTotals = calculateSetTotals(set);
                   return (
                     <div key={set.id} className="p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
