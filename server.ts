@@ -557,9 +557,12 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
     await connection.query("INSERT INTO wood_sets (id, supplierName, date, total_volume, total_value, synced) VALUES (?, ?, ?, ?, ?, ?)", [set.id, set.supplierName, set.date, totalVolume, totalValue, true]);
     for (const cat of set.categories) {
       await connection.query("INSERT INTO wood_categories (id, set_id, woodType, length, condition_val, pricePerM3) VALUES (?, ?, ?, ?, ?, ?)", [cat.id, set.id, cat.woodType, cat.length, cat.condition, cat.pricePerM3]);
+      
       const logGroups: Record<string, { count: number, volume: number, value: number }> = {};
+      const logValues = [];
+
       for (const log of cat.logs) {
-        await connection.query("INSERT INTO log_entries (id, category_id, diameter, volume) VALUES (?, ?, ?, ?)", [log.id, cat.id, log.diameter, log.volume]);
+        logValues.push([log.id, cat.id, log.diameter, log.volume]);
         const group = getDiameterGroup(log.diameter);
         if (!logGroups[group]) logGroups[group] = { count: 0, volume: 0, value: 0 };
 
@@ -571,6 +574,11 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
         logGroups[group].volume += vol;
         logGroups[group].value += val;
       }
+
+      if (logValues.length > 0) {
+        await connection.query("INSERT INTO log_entries (id, category_id, diameter, volume) VALUES ?", [logValues]);
+      }
+
       for (const [group, data] of Object.entries(logGroups)) {
         await connection.query(`
           INSERT INTO inventory (wood_type, diameter_group, length, condition_val, total_logs, total_volume, avg_price, total_value)

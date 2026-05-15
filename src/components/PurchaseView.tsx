@@ -213,11 +213,11 @@ export default function PurchaseView({
     const rawTotals = set.categories.reduce((acc, cat) => {
       const catVolume = cat.logs.reduce((sum, log) => {
         const isX = cat.condition === 'X' || log.diameter < 10;
-        return sum + (isX ? 0 : log.volume);
+        return sum + (isX ? 0 : calculateVolume(log.diameter, cat.length || 200));
       }, 0);
       const catPrice = cat.logs.reduce((sum, log) => {
         if (log.diameter < 10) return sum + 1000;
-        return sum + (log.volume * cat.pricePerM3);
+        return sum + (calculateVolume(log.diameter, cat.length || 200) * cat.pricePerM3);
       }, 0);
       return { volume: acc.volume + catVolume, price: acc.price + catPrice };
     }, { volume: 0, price: 0 });
@@ -298,9 +298,21 @@ export default function PurchaseView({
 
     if (diameter < 10) {
       const X_NAME = 'X';
-      let targetCat = activeSet.categories.find(c =>
-        c.woodType === sessionWoodType && c.condition === 'X' && c.name === X_NAME
-      );
+      let targetCat = undefined;
+
+      if (selectedCategoryId) {
+        const selectedCat = activeSet.categories.find(c => c.id === selectedCategoryId);
+        if (selectedCat && selectedCat.woodType === sessionWoodType && selectedCat.condition === 'X') {
+          targetCat = selectedCat;
+        }
+      }
+
+      if (!targetCat) {
+        targetCat = activeSet.categories.find(c =>
+          c.woodType === sessionWoodType && c.condition === 'X'
+        );
+      }
+
       let newCategories = [...activeSet.categories];
       if (!targetCat) {
         targetCat = {
@@ -330,12 +342,27 @@ export default function PurchaseView({
       return;
     }
 
-    let targetCat = activeSet.categories.find(c =>
-      c.woodType === sessionWoodType &&
-      c.length === sessionLength &&
-      c.condition === sessionCondition &&
-      c.name === inferredName
-    );
+    let targetCat = undefined;
+
+    // Prioritaskan kategori yang sedang dipilih jika cocok kriterianya
+    if (selectedCategoryId) {
+      const selectedCat = activeSet.categories.find(c => c.id === selectedCategoryId);
+      if (selectedCat && 
+          selectedCat.woodType === sessionWoodType && 
+          selectedCat.length === sessionLength && 
+          selectedCat.condition === sessionCondition) {
+        targetCat = selectedCat;
+      }
+    }
+
+    // Jika tidak ada yang dipilih atau tidak cocok, cari yang pertama cocok
+    if (!targetCat) {
+      targetCat = activeSet.categories.find(c =>
+        c.woodType === sessionWoodType &&
+        c.length === sessionLength &&
+        c.condition === sessionCondition
+      );
+    }
 
     let newCategories = [...activeSet.categories];
 
@@ -429,11 +456,11 @@ export default function PurchaseView({
   const getCategorySubtotal = (cat: WoodCategory) => {
     const volume = cat.logs.reduce((sum, l) => {
       const isX = cat.condition === 'X' || l.diameter < 10;
-      return sum + (isX ? 0 : l.volume);
+      return sum + (isX ? 0 : calculateVolume(l.diameter, cat.length || 200));
     }, 0);
     const price = cat.logs.reduce((sum, log) => {
       if (log.diameter < 10) return sum + 1000;
-      return sum + (log.volume * cat.pricePerM3);
+      return sum + (calculateVolume(log.diameter, cat.length || 200) * cat.pricePerM3);
     }, 0);
     return { volume, price };
   };
@@ -659,7 +686,7 @@ export default function PurchaseView({
                       {cat.condition === 'X' || cat.length === 0 ? '' : `${cat.length}cm • `}{cat.logs.length} Batang
                     </span>
                     <span className="font-mono text-xs font-bold">
-                      {cat.logs.reduce((sum, l) => sum + l.volume, 0).toFixed(4)} m³
+                      {cat.logs.reduce((sum, l) => sum + calculateVolume(l.diameter, cat.length || 200), 0).toFixed(4)} m³
                     </span>
                   </div>
                 </button>
@@ -973,7 +1000,24 @@ export default function PurchaseView({
             </div>
 
             <button
-              onClick={onSave}
+              onClick={() => {
+                if (activeSet) {
+                  // Sanitize volumes before saving to ensure old unrounded data is fixed
+                  const sanitizedCategories = activeSet.categories.map(cat => ({
+                    ...cat,
+                    logs: cat.logs.map(log => ({
+                      ...log,
+                      volume: calculateVolume(log.diameter, cat.length || 200)
+                    }))
+                  }));
+                  const sanitizedSet = { ...activeSet, categories: sanitizedCategories };
+                  setActiveSet(sanitizedSet);
+                  // Pass directly to ensure closure has the updated state
+                  onSave(sanitizedSet);
+                } else {
+                  onSave();
+                }
+              }}
               disabled={isLoading}
               className={`w-full py-2 bg-transparent text-white rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-white/5 active:scale-95 text-lg font-medium tracking-wide ${isLoading ? 'opacity-50' : ''}`}
             >

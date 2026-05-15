@@ -588,7 +588,12 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
-                    {selectedSale.items.map((item, idx) => (
+                    {[...selectedSale.items].sort((a, b) => {
+                      if (a.wood_type !== b.wood_type) return a.wood_type.localeCompare(b.wood_type);
+                      if (a.length !== b.length) return Number(a.length) - Number(b.length);
+                      if (a.condition !== b.condition) return (a.condition || '').localeCompare(b.condition || '');
+                      return (a.diameter_group || '').localeCompare(b.diameter_group || '');
+                    }).map((item, idx) => (
                       <tr key={idx}>
                         <td className="py-4">
                           <p className="font-bold text-zinc-900">{item.wood_type}</p>
@@ -596,7 +601,7 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
                         </td>
                         <td className="py-4 text-center font-mono font-bold">{item.volume.toFixed(3)} m³</td>
                         <td className="py-4 text-right font-mono">{formatCurrency(item.sale_price_per_m3)}</td>
-                        <td className="py-4 text-right font-bold text-zinc-900">{formatCurrency(item.subtotal_revenue)}</td>
+                        <td className="py-4 text-right font-bold text-zinc-900">{formatCurrency(item.subtotal_revenue || (item.volume * item.sale_price_per_m3))}</td>
                       </tr>
                     ))}
                   </tbody>

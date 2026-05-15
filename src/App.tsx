@@ -69,6 +69,7 @@ export default function App() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [woodTypes, setWoodTypes] = useState<{ name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Modal State
   const [modalConfig, setModalConfig] = useState<{
@@ -163,6 +164,8 @@ export default function App() {
       ]);
     } catch (error) {
       console.error("Network error during fetch:", error);
+    } finally {
+      setIsInitialLoad(false);
     }
   }, [fetchWithAuth, auth.user?.role]);
 
@@ -222,18 +225,20 @@ export default function App() {
     setActiveSet(newSet);
   };
 
-  const handleSaveSet = async () => {
-    if (!activeSet || activeSet.categories.length === 0) return;
+  const handleSaveSet = async (setOverride?: any) => {
+    const setToSave = setOverride || activeSet;
+    if (!setToSave || setToSave.categories.length === 0) return;
     setIsLoading(true);
     try {
       const response = await fetchWithAuth('/api/sets', {
         method: 'POST',
-        body: JSON.stringify(activeSet)
+        body: JSON.stringify(setToSave)
       });
       if (response.ok) {
-        await fetchData();
         createNewSet();
         alert('Set Kayu berhasil disimpan dan stok diperbarui!');
+        // Fetch data di background tanpa memblokir UI
+        fetchData();
       }
     } catch (error) {
       alert('Gagal menyimpan data.');
@@ -266,8 +271,9 @@ export default function App() {
         body: JSON.stringify(sale)
       });
       if (response.ok) {
-        await fetchData();
         alert('Penjualan berhasil dicatat!');
+        // Fetch data di background
+        fetchData();
       } else {
         const err = await response.json();
         alert('Gagal: ' + err.error);
@@ -644,7 +650,7 @@ export default function App() {
 
         <div className="flex-1 overflow-y-auto relative">
           {/* Loading State Fetch Awal */}
-          {isLoading && !activeSet && (
+          {(isLoading || isInitialLoad) && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/50 dark:bg-zinc-950/50 backdrop-blur-sm">
               <div className="flex flex-col items-center gap-4">
                 <div className="w-12 h-12 border-4 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-white rounded-full animate-spin"></div>
