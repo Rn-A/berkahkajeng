@@ -238,11 +238,14 @@ export default function App() {
   useEffect(() => {
     if (auth.isAuthenticated) {
       fetchData(activeView);
-      if (activeView === 'purchase' && !activeSet) {
-        createNewSet();
-      }
     }
-  }, [fetchData, auth.isAuthenticated, activeView, activeSet, createNewSet]);
+  }, [fetchData, auth.isAuthenticated, activeView]);
+
+  useEffect(() => {
+    if (auth.isAuthenticated && activeView === 'purchase' && !activeSet) {
+      createNewSet();
+    }
+  }, [auth.isAuthenticated, activeView, activeSet, createNewSet]);
 
   const handleLogin = async (credentials: any) => {
     try {
