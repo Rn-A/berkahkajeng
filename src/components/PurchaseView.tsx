@@ -34,7 +34,7 @@ interface PurchaseViewProps {
   activeSet: WoodSet | null;
   setActiveSet: (set: WoodSet | null) => void;
   history: WoodSet[];
-  onSave: () => Promise<void>;
+  onSave: (setOverride?: WoodSet) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   isLoading: boolean;
   createNewSet: () => void;
