@@ -197,29 +197,21 @@ export default function App() {
     
     try {
       if (view === 'dashboard') {
-        const res = await fetchWithAuth('/api/dashboard');
-        if (res?.ok) {
-          const data = await res.json();
-          setDashboardData(data);
-          
-          setTimeout(async () => {
-            try {
-              const [invR, salesR, purchR, expR] = await Promise.all([
-                fetchWithAuth('/api/inventory'),
-                fetchWithAuth('/api/sales'),
-                fetchWithAuth('/api/sets'),
-                fetchWithAuth('/api/expenses')
-              ]);
-              
-              if (invR?.ok) { setInventory(await invR.json()); }
-              if (salesR?.ok) { setSalesHistory(await salesR.json()); }
-              if (purchR?.ok) { setHistory(await purchR.json()); }
-              if (expR?.ok) { setExpenses(await expR.json()); }
-            } catch (e) {
-              console.error("Background fetch failed", e);
-            }
-          }, 1000);
-        } else if (res?.status === 401 || res?.status === 403) {
+        const [dashR, invR, salesR, purchR, expR] = await Promise.all([
+          fetchWithAuth('/api/dashboard'),
+          fetchWithAuth('/api/inventory'),
+          fetchWithAuth('/api/sales'),
+          fetchWithAuth('/api/sets'),
+          fetchWithAuth('/api/expenses')
+        ]);
+
+        if (dashR?.ok) setDashboardData(await dashR.json());
+        if (invR?.ok) setInventory(await invR.json());
+        if (salesR?.ok) setSalesHistory(await salesR.json());
+        if (purchR?.ok) setHistory(await purchR.json());
+        if (expR?.ok) setExpenses(await expR.json());
+
+        if (dashR?.status === 401 || dashR?.status === 403) {
           handleLogout();
         }
       } else {
@@ -284,7 +276,7 @@ export default function App() {
       lastFetchedView.current = activeView;
       fetchData(activeView);
     }
-  }, [auth.isAuthenticated, activeView, fetchData]);
+  }, [auth.isAuthenticated, activeView]);
 
   useEffect(() => {
     if (auth.isAuthenticated && activeView === 'purchase' && !activeSet) {

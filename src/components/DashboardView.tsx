@@ -1,16 +1,9 @@
 import React, { useMemo, useState } from 'react';
 // Recharts components deferred for better initial render performance
-const XAxis = React.lazy(() => import('recharts').then(m => ({ default: m.XAxis })));
-const YAxis = React.lazy(() => import('recharts').then(m => ({ default: m.YAxis })));
-const CartesianGrid = React.lazy(() => import('recharts').then(m => ({ default: m.CartesianGrid })));
-const Tooltip = React.lazy(() => import('recharts').then(m => ({ default: m.Tooltip })));
-const ResponsiveContainer = React.lazy(() => import('recharts').then(m => ({ default: m.ResponsiveContainer })));
-const PieChart = React.lazy(() => import('recharts').then(m => ({ default: m.PieChart })));
-const Pie = React.lazy(() => import('recharts').then(m => ({ default: m.Pie })));
-const Cell = React.lazy(() => import('recharts').then(m => ({ default: m.Cell })));
-const Legend = React.lazy(() => import('recharts').then(m => ({ default: m.Legend })));
-const LineChart = React.lazy(() => import('recharts').then(m => ({ default: m.LineChart })));
-const Line = React.lazy(() => import('recharts').then(m => ({ default: m.Line })));
+import { 
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell, Legend, LineChart, Line 
+} from 'recharts';
 import { TrendingUp, Package, ShoppingCart, Wallet, ArrowUpRight, CreditCard, Activity, Download, Database } from 'lucide-react';
 import { DashboardData, Sale, WoodSet, InventoryItem, Expense } from '../types';
 import { roundPrice } from '../lib/utils';
