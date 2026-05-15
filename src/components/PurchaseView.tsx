@@ -996,7 +996,6 @@ export default function PurchaseView({
                                     }
                                   }}
                                 />
-                              </div>
                               
                               <button 
                                 onClick={() => addLogByDiameter(activeCategory.id, diamNum)}
