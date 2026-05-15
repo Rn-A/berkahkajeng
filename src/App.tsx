@@ -15,7 +15,10 @@ import {
   UserPlus,
   User as UserIcon,
   Moon,
-  Sun
+  Sun,
+  CheckCircle2,
+  Info,
+  XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WoodSet, InventoryItem, Sale, DashboardData, User, AuthState, Supplier, Customer, Expense, AuditLog } from './types';
@@ -72,20 +75,31 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Modal State
+  // Modal & Toast State
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     title: string;
     message: string;
-    onConfirm: () => void;
     variant: 'danger' | 'warning' | 'info';
+    onConfirm: () => void;
   }>({
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {},
-    variant: 'danger'
+    variant: 'info',
+    onConfirm: () => { }
   });
+
+  const [toast, setToast] = useState<{ isOpen: boolean, message: string, type: 'success' | 'info' | 'error' }>({
+    isOpen: false,
+    message: '',
+    type: 'success'
+  });
+
+  const showToast = useCallback((message: string, type: 'success' | 'info' | 'error' = 'success') => {
+    setToast({ isOpen: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, isOpen: false })), 3000);
+  }, []);
 
   // Password Reset State
   const [resetData, setResetData] = useState<{ email: string; token: string } | null>(null);
@@ -233,7 +247,7 @@ export default function App() {
     
     // Optimistic UI: Reset form immediately
     createNewSet();
-    alert('Set Kayu sedang disimpan di latar belakang...');
+    showToast('Tersimpan! Memproses di latar belakang...', 'success');
 
     try {
       const response = await fetchWithAuth('/api/sets', {
@@ -243,10 +257,10 @@ export default function App() {
       if (response.ok) {
         fetchData(); // Silently update history and dashboard
       } else {
-        alert('Terjadi kesalahan saat menyimpan data ke database.');
+        showToast('Gagal menyimpan ke database!', 'error');
       }
     } catch (error) {
-      alert('Gagal menghubungi server.');
+      showToast('Gagal menghubungi server.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -276,12 +290,12 @@ export default function App() {
         body: JSON.stringify(sale)
       });
       if (response.ok) {
-        alert('Penjualan berhasil dicatat!');
+        showToast('Penjualan berhasil dicatat!', 'success');
         // Fetch data di background
         fetchData();
       } else {
         const err = await response.json();
-        alert('Gagal: ' + err.error);
+        showToast('Gagal: ' + err.error, 'error');
         throw new Error(err.error);
       }
     } catch (error) {
@@ -778,6 +792,23 @@ export default function App() {
         message={modalConfig.message}
         variant={modalConfig.variant}
       />
+
+      {/* Global Toast Notification */}
+      <AnimatePresence>
+        {toast.isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-6 py-4 rounded-2xl shadow-2xl font-medium tracking-wide"
+          >
+            {toast.type === 'success' && <CheckCircle2 className="text-emerald-500" size={24} />}
+            {toast.type === 'info' && <Info className="text-blue-500" size={24} />}
+            {toast.type === 'error' && <XCircle className="text-red-500" size={24} />}
+            <p className="text-sm">{toast.message}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
