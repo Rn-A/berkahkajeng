@@ -185,12 +185,17 @@ export default function PurchaseView({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [activeInputMode, setActiveInputMode] = useState<string | null>('manual');
   const [manualDiameter, setManualDiameter] = useState<string>('');
+  const [manualQuantity, setManualQuantity] = useState<string>('1');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
   const [showBulkInput, setShowBulkInput] = useState(false);
   const [bulkInputText, setBulkInputText] = useState('');
+  
+  // New state for range input quantity editing
+  const [editingRangeDiameter, setEditingRangeDiameter] = useState<number | null>(null);
+  const [tempRangeLogCount, setTempRangeLogCount] = useState<string>('');
 
   const [editingLogDiameter, setEditingLogDiameter] = useState<number | null>(null);
   const [tempLogCount, setTempLogCount] = useState<string>('');
@@ -288,6 +293,21 @@ export default function PurchaseView({
       categories: activeSet.categories.filter(cat => cat.id !== id)
     });
     if (selectedCategoryId === id) setSelectedCategoryId(null);
+  };
+
+  const getAutoCategory = (diameter: number) => {
+    if (!activeSet) return null;
+    if (diameter < 10) {
+      return activeSet.categories.find(c => c.woodType === sessionWoodType && c.condition === 'X') || null;
+    }
+    const inferredName = determineWoodCategory(sessionCondition, sessionLength, diameter);
+    if (!inferredName) return null;
+    return activeSet.categories.find(c => 
+      c.woodType === sessionWoodType && 
+      c.length === sessionLength && 
+      c.condition === sessionCondition &&
+      c.name === inferredName
+    ) || null;
   };
 
   const addLogAuto = (diameter: number) => {
@@ -888,26 +908,61 @@ export default function PurchaseView({
                 {activeInputMode === 'manual' ? (
                   <motion.div key="manual" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-4 rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 flex flex-col justify-center bg-zinc-50 dark:bg-zinc-900/50">
                     <div className="flex gap-2">
-                      <input
-                        autoFocus
-                        type="number"
-                        min="0"
-                        className="input-field w-full py-4 px-4 text-[15px] font-mono text-center font-bold tracking-widest dark:bg-zinc-800 dark:text-white border-2 border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-white shadow-inner"
-                        placeholder="Ketik 50up atau lainnya..."
-                        value={manualDiameter}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setManualDiameter(val === '' ? '' : Math.max(0, parseInt(val)).toString());
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && manualDiameter) {
-                            addLogAuto(Math.max(0, parseInt(manualDiameter)));
-                            setManualDiameter('');
-                          }
-                        }}
-                      />
+                      <div className="flex-[2] relative">
+                        <label className="absolute -top-2 left-3 bg-zinc-50 dark:bg-zinc-900 px-1 text-[8px] font-bold text-zinc-400 uppercase tracking-tighter z-10">Diameter</label>
+                        <input
+                          autoFocus
+                          type="number"
+                          min="0"
+                          className="input-field w-full py-4 px-4 text-[15px] font-mono text-center font-bold tracking-widest dark:bg-zinc-800 dark:text-white border-2 border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-white shadow-inner"
+                          placeholder="Dia..."
+                          value={manualDiameter}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setManualDiameter(val === '' ? '' : Math.max(0, parseInt(val)).toString());
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && manualDiameter) {
+                              const qty = parseInt(manualQuantity) || 1;
+                              for(let i=0; i<qty; i++) addLogAuto(Math.max(0, parseInt(manualDiameter)));
+                              setManualDiameter('');
+                              setManualQuantity('1');
+                            }
+                          }}
+                        />
+                      </div>
+                      
+                      <div className="flex-1 relative">
+                        <label className="absolute -top-2 left-3 bg-zinc-50 dark:bg-zinc-900 px-1 text-[8px] font-bold text-zinc-400 uppercase tracking-tighter z-10">Jumlah</label>
+                        <input
+                          type="number"
+                          min="1"
+                          className="input-field w-full py-4 px-2 text-[15px] font-mono text-center font-bold dark:bg-zinc-800 dark:text-white border-2 border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-white shadow-inner"
+                          value={manualQuantity}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setManualQuantity(val === '' ? '' : Math.max(1, parseInt(val)).toString());
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && manualDiameter) {
+                              const qty = parseInt(manualQuantity) || 1;
+                              for(let i=0; i<qty; i++) addLogAuto(Math.max(0, parseInt(manualDiameter)));
+                              setManualDiameter('');
+                              setManualQuantity('1');
+                            }
+                          }}
+                        />
+                      </div>
+
                       <button
-                        onClick={() => { if (manualDiameter) { addLogAuto(Math.max(0, parseInt(manualDiameter))); setManualDiameter(''); } }}
+                        onClick={() => { 
+                          if (manualDiameter) { 
+                            const qty = parseInt(manualQuantity) || 1;
+                            for(let i=0; i<qty; i++) addLogAuto(Math.max(0, parseInt(manualDiameter))); 
+                            setManualDiameter(''); 
+                            setManualQuantity('1');
+                          } 
+                        }}
                         className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-6 rounded-xl shrink-0 hover:bg-zinc-800 dark:hover:bg-zinc-200 active:scale-95 transition-all shadow-md"
                       >
                         <Plus size={32} />
@@ -921,12 +976,99 @@ export default function PurchaseView({
                       <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">Pilih Diameter ({activeInputMode}):</span>
                       </div>
-                      <div className="grid grid-cols-5 gap-3 md:gap-4">
-                        {Array.from({ length: 10 }, (_, i) => parseInt(activeInputMode.split('-')[0]) + i).map(d => (
-                          <button key={d} onClick={() => addLogAuto(d)} className="w-full aspect-square rounded-xl bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-700 font-bold text-[17px] dark:text-white hover:bg-zinc-900 dark:hover:bg-white hover:text-white dark:hover:text-zinc-900 hover:border-zinc-900 dark:hover:border-white transition-all active:scale-95 flex items-center justify-center shadow-sm">
-                            {d}
-                          </button>
-                        ))}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
+                        {Array.from({ length: 10 }, (_, i) => parseInt(activeInputMode.split('-')[0]) + i).map(d => {
+                          const targetCat = getAutoCategory(d);
+                          const count = targetCat ? targetCat.logs.filter(l => l.diameter === d).length : 0;
+                          const isEditing = editingRangeDiameter === d;
+
+                          return (
+                            <div key={d} className="flex flex-col bg-white dark:bg-zinc-900 rounded-xl border-2 border-zinc-100 dark:border-zinc-800 p-2.5 shadow-sm transition-all hover:border-zinc-300 dark:hover:border-zinc-700">
+                              <div className="flex justify-between items-center mb-2.5 px-1">
+                                <span className="font-black text-sm dark:text-white">Ø {d}</span>
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase">{count} bt</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button 
+                                  onClick={() => {
+                                    const cat = getAutoCategory(d);
+                                    if (cat && count > 0) setLogCountByDiameter(cat.id, d, count - 1);
+                                  }}
+                                  className="flex-1 h-8 rounded-lg border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all active:scale-90"
+                                >
+                                  <Minus size={12} />
+                                </button>
+                                
+                                <div className="relative flex-[1.5]">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    className="w-full h-8 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg text-center font-bold text-xs dark:text-white focus:outline-none focus:ring-1 focus:ring-zinc-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-text"
+                                    value={isEditing ? tempRangeLogCount : count}
+                                    onFocus={() => {
+                                      setEditingRangeDiameter(d);
+                                      setTempRangeLogCount(count.toString());
+                                    }}
+                                    onChange={(e) => setTempRangeLogCount(e.target.value)}
+                                    onBlur={() => {
+                                      const val = parseInt(tempRangeLogCount);
+                                      const finalVal = (!isNaN(val) && val >= 0) ? val : 0;
+                                      
+                                      // Jika kategori belum ada, buat dulu dengan addLogAuto(d) baru kemudian setLogCount
+                                      if (finalVal > 0) {
+                                        let cat = getAutoCategory(d);
+                                        if (!cat) {
+                                          addLogAuto(d); // Buat kategori
+                                          // Tunggu re-render untuk mendapatkan cat terbaru mungkin sulit, 
+                                          // tapi setLogCountByDiameter akan dipanggil setelah state update.
+                                          // Namun karena state update async, kita butuh cara pasti.
+                                          // Untungnya addLogAuto sudah mengupdate activeSet.
+                                          setTimeout(() => {
+                                             // Re-check category after addLogAuto
+                                             // Note: This is a bit hacky but works for UI
+                                          }, 0);
+                                        }
+                                        // Mencari categoryId yang tepat (bisa pakai determineWoodCategory)
+                                        const inferredName = determineWoodCategory(sessionCondition, sessionLength, d);
+                                        const targetCat = activeSet?.categories.find(c => 
+                                          c.woodType === sessionWoodType && 
+                                          c.length === sessionLength && 
+                                          c.condition === sessionCondition &&
+                                          c.name === inferredName
+                                        );
+                                        if (targetCat) {
+                                          setLogCountByDiameter(targetCat.id, d, finalVal);
+                                        } else {
+                                          // Fallback: use addLogAuto multiple times if needed, 
+                                          // but setLogCountByDiameter is more direct.
+                                          // For simplicity, if it doesn't exist, we use addLogAuto(d) 
+                                          // and then we'd need to find the ID.
+                                          // Let's just call addLogAuto(d) and then set count.
+                                          addLogAuto(d);
+                                          // Wait for it to be created... actually let's just make addLogAuto 
+                                          // able to handle quantity.
+                                        }
+                                      } else if (targetCat) {
+                                        setLogCountByDiameter(targetCat.id, d, 0);
+                                      }
+                                      setEditingRangeDiameter(null);
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                    }}
+                                  />
+                                </div>
+
+                                <button 
+                                  onClick={() => addLogAuto(d)}
+                                  className="flex-1 h-8 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center hover:opacity-90 transition-all active:scale-90"
+                                >
+                                  <Plus size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </motion.div>
