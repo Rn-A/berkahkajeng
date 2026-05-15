@@ -146,6 +146,27 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  const handleLogout = useCallback(() => {
+    setAuth({ user: null, isAuthenticated: false });
+    localStorage.removeItem('logyard_auth');
+    setActiveView('dashboard');
+  }, []);
+
+  const createNewSet = useCallback(() => {
+    const newSet: WoodSet = {
+      id: crypto.randomUUID(),
+      supplierName: '',
+      date: (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      })(),
+      categories: [],
+      total_volume: 0,
+      total_value: 0
+    };
+    setActiveSet(newSet);
+  }, []);
+
   const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
     const token = auth.user?.token;
     const headers = {
@@ -156,32 +177,15 @@ export default function App() {
     return fetch(url, { ...options, headers });
   }, [auth.user?.token]);
 
-  const fetchData = useCallback(async (view: ViewType) => {
+  const fetchData = useCallback(async (viewArg?: ViewType) => {
+    const view = viewArg || activeView;
     try {
-      const processResponse = async (res: Response | null, setter: (data: any) => void, label: string) => {
-        if (!res) return;
-        if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
-            handleLogout();
-            return;
-          }
-          return;
-        }
-        try {
-          const data = await res.json();
-          setter(data);
-        } catch (e) {
-          console.error(`JSON error for ${label}:`, e);
-        }
-      };
-
       if (view === 'dashboard') {
         const res = await fetchWithAuth('/api/dashboard');
         if (res && res.ok) {
           const data = await res.json();
           setDashboardData(data);
           
-          // Background fetches - isolated from main flow
           setTimeout(async () => {
             try {
               const [invR, salesR, purchR, expR] = await Promise.all([
@@ -206,7 +210,6 @@ export default function App() {
         }
       }
 
-      // Specific view fetches
       if (view === 'purchase') {
         const [setsR, suppR, woodR] = await Promise.all([
           fetchWithAuth('/api/sets'),
@@ -246,7 +249,7 @@ export default function App() {
     } finally {
       setIsInitialLoad(false);
     }
-  }, [fetchWithAuth, auth.user?.role, handleLogout]);
+  }, [fetchWithAuth, auth.user?.role, handleLogout, activeView]);
 
   useEffect(() => {
     if (auth.isAuthenticated) {
@@ -288,26 +291,7 @@ export default function App() {
     }
   };
 
-  const handleLogout = useCallback(() => {
-    setAuth({ user: null, isAuthenticated: false });
-    localStorage.removeItem('logyard_auth');
-    setActiveView('dashboard');
-  }, []);
 
-  const createNewSet = useCallback(() => {
-    const newSet: WoodSet = {
-      id: crypto.randomUUID(),
-      supplierName: '',
-      date: (() => {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      })(),
-      categories: [],
-      total_volume: 0,
-      total_value: 0
-    };
-    setActiveSet(newSet);
-  }, []);
 
   const handleSaveSet = async (setOverride?: any) => {
     const setToSave = setOverride || activeSet;
@@ -549,24 +533,7 @@ export default function App() {
     );
   }
 
-  // Skeleton Loader for Views
-  const ViewSkeleton = () => (
-    <div className="space-y-8 animate-pulse">
-      <div className="flex justify-between items-end gap-4">
-        <div className="space-y-2">
-          <div className="h-8 w-64 bg-zinc-200 dark:bg-zinc-800 rounded-lg"></div>
-          <div className="h-4 w-96 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg"></div>
-        </div>
-        <div className="h-10 w-32 bg-zinc-200 dark:bg-zinc-800 rounded-lg"></div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-32 bg-zinc-100 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800"></div>
-        ))}
-      </div>
-      <div className="h-96 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm"></div>
-    </div>
-  );
+
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased">
