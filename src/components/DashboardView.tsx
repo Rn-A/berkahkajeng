@@ -496,25 +496,27 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
 
         {showCharts ? (
           <div className="h-[350px]">
-            <ChartComponents.ResponsiveContainer width="100%" height="100%">
-              <ChartComponents.LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <ChartComponents.CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
-                <ChartComponents.XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
-                <ChartComponents.YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{fontSize: 10, fill: '#a1a1aa'}}
-                  width={80}
-                  tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`}
-                />
-                <ChartComponents.Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
+            <React.Suspense fallback={<div className="h-full w-full flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/20 rounded-xl animate-pulse"><TrendingUp size={32} className="text-zinc-200 dark:text-zinc-700" /></div>}>
+              <ChartComponents.ResponsiveContainer width="100%" height="100%">
+                <ChartComponents.LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <ChartComponents.CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
+                  <ChartComponents.XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
+                  <ChartComponents.YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{fontSize: 10, fill: '#a1a1aa'}}
+                    width={80}
+                    tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`}
+                  />
+                  <ChartComponents.Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
 
-                <ChartComponents.Line type="monotone" dataKey="sales_revenue" name="Pendapatan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
-                <ChartComponents.Line type="monotone" dataKey="purchase_value" name="Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
-                <ChartComponents.Line type="monotone" dataKey="expense_amount" name="Pengeluaran (Rp)" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
-                <ChartComponents.Line type="monotone" dataKey="net_cashflow" name="Arus Kas Bersih (Rp)" stroke="#3b82f6" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 5 }} activeDot={{ r: 7 }} isAnimationActive={false} />
-              </ChartComponents.LineChart>
-            </ChartComponents.ResponsiveContainer>
+                  <ChartComponents.Line type="monotone" dataKey="sales_revenue" name="Pendapatan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
+                  <ChartComponents.Line type="monotone" dataKey="purchase_value" name="Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
+                  <ChartComponents.Line type="monotone" dataKey="expense_amount" name="Pengeluaran (Rp)" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
+                  <ChartComponents.Line type="monotone" dataKey="net_cashflow" name="Arus Kas Bersih (Rp)" stroke="#3b82f6" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 5 }} activeDot={{ r: 7 }} isAnimationActive={false} />
+                </ChartComponents.LineChart>
+              </ChartComponents.ResponsiveContainer>
+            </React.Suspense>
           </div>
         ) : (
           <div className="h-[350px] flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/20 rounded-xl animate-pulse">
@@ -541,41 +543,43 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
 
         {showCharts ? (
           <div className="h-[400px]">
-            <ChartComponents.ResponsiveContainer width="100%" height="100%">
-              <ChartComponents.LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <ChartComponents.CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
-                <ChartComponents.XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
-                
-                <ChartComponents.YAxis 
-                  yAxisId="left" 
-                  orientation="left" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fontSize: 10, fill: '#a1a1aa'}} 
-                  width={80} 
-                  tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`} 
-                />
-                
-                <ChartComponents.YAxis 
-                  yAxisId="right" 
-                  orientation="right" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fontSize: 10, fill: '#a1a1aa'}} 
-                  width={40} 
-                  tickFormatter={(v) => `${v.toFixed(0)}`}
-                />
-                
-                <ChartComponents.Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
+            <React.Suspense fallback={<div className="h-full w-full flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/20 rounded-xl animate-pulse"><TrendingUp size={32} className="text-zinc-200 dark:text-zinc-700" /></div>}>
+              <ChartComponents.ResponsiveContainer width="100%" height="100%">
+                <ChartComponents.LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <ChartComponents.CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
+                  <ChartComponents.XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
+                  
+                  <ChartComponents.YAxis 
+                    yAxisId="left" 
+                    orientation="left" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 10, fill: '#a1a1aa'}} 
+                    width={80} 
+                    tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`} 
+                  />
+                  
+                  <ChartComponents.YAxis 
+                    yAxisId="right" 
+                    orientation="right" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 10, fill: '#a1a1aa'}} 
+                    width={40} 
+                    tickFormatter={(v) => `${v.toFixed(0)}`}
+                  />
+                  
+                  <ChartComponents.Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
 
-                <ChartComponents.Line yAxisId="left" type="monotone" dataKey="sales_revenue" name="Harga Penjualan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
-                <ChartComponents.Line yAxisId="left" type="monotone" dataKey="purchase_value" name="Harga Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
-                
-                <ChartComponents.Line yAxisId="right" type="monotone" dataKey="sales_volume" name="Volume Penjualan (m³)" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
-                <ChartComponents.Line yAxisId="right" type="monotone" dataKey="purchase_volume" name="Volume Pembelian (m³)" stroke="#eab308" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
-                <ChartComponents.Line yAxisId="right" type="monotone" dataKey="stock_volume" name="Volume Stok Tersedia (m³)" stroke="#06b6d4" strokeWidth={4} dot={{ r: 5 }} activeDot={{ r: 8 }} isAnimationActive={false} />
-              </ChartComponents.LineChart>
-            </ChartComponents.ResponsiveContainer>
+                  <ChartComponents.Line yAxisId="left" type="monotone" dataKey="sales_revenue" name="Harga Penjualan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
+                  <ChartComponents.Line yAxisId="left" type="monotone" dataKey="purchase_value" name="Harga Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
+                  
+                  <ChartComponents.Line yAxisId="right" type="monotone" dataKey="sales_volume" name="Volume Penjualan (m³)" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
+                  <ChartComponents.Line yAxisId="right" type="monotone" dataKey="purchase_volume" name="Volume Pembelian (m³)" stroke="#eab308" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
+                  <ChartComponents.Line yAxisId="right" type="monotone" dataKey="stock_volume" name="Volume Stok Tersedia (m³)" stroke="#06b6d4" strokeWidth={4} dot={{ r: 5 }} activeDot={{ r: 8 }} isAnimationActive={false} />
+                </ChartComponents.LineChart>
+              </ChartComponents.ResponsiveContainer>
+            </React.Suspense>
           </div>
         ) : (
           <div className="h-[400px] flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/20 rounded-xl animate-pulse">
@@ -594,25 +598,27 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
           <div className="flex-1 flex flex-col justify-between">
             <div className="h-56 md:h-64 w-full flex justify-center mb-8">
               {showCharts ? (
-                <ChartComponents.ResponsiveContainer width="100%" height="100%">
-                  <ChartComponents.PieChart>
-                    <ChartComponents.Pie
-                      data={stockData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={75}
-                      outerRadius={100}
-                      paddingAngle={3}
-                      dataKey="volume"
-                      nameKey="wood_type"
-                      stroke="none"
-                      isAnimationActive={false}
-                    >
-                      {stockData.map((entry, index) => (
-                        <ChartComponents.Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </ChartComponents.Pie>
-                    <ChartComponents.Tooltip
+                <React.Suspense fallback={<div className="h-full w-full flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/20 rounded-xl animate-pulse"><Package size={32} className="text-zinc-200 dark:text-zinc-700" /></div>}>
+                  <ChartComponents.ResponsiveContainer width="100%" height="100%">
+                    <ChartComponents.PieChart>
+                      <ChartComponents.Pie
+                        data={stockData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={75}
+                        outerRadius={100}
+                        paddingAngle={3}
+                        dataKey="volume"
+                        nameKey="wood_type"
+                        stroke="none"
+                        isAnimationActive={false}
+                      >
+                        {stockData.map((entry, index) => (
+                          <ChartComponents.Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </ChartComponents.Pie>
+                      <ChartComponents.Tooltip
+
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
@@ -628,7 +634,8 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
                       }}
                     />
                   </ChartComponents.PieChart>
-                </ChartComponents.ResponsiveContainer>
+                  </ChartComponents.ResponsiveContainer>
+                </React.Suspense>
               ) : (
                 <div className="h-full w-full flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/20 rounded-full animate-pulse">
                   <Package size={32} className="text-zinc-200 dark:text-zinc-700" />
