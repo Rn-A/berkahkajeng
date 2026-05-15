@@ -1039,7 +1039,14 @@ export default function PurchaseView({
                     </tr>
                   </thead>
                   <tbody className="text-xs">
-                    {activeSet?.categories.map(cat => {
+                    {(activeSet?.categories || [])
+                      .slice()
+                      .sort((a, b) => {
+                        const minA = a.logs.length > 0 ? Math.min(...a.logs.map(l => l.diameter)) : 0;
+                        const minB = b.logs.length > 0 ? Math.min(...b.logs.map(l => l.diameter)) : 0;
+                        return minA - minB;
+                      })
+                      .map(cat => {
                       const sub = getCategorySubtotal(cat);
                       return (
                         <React.Fragment key={cat.id}>
