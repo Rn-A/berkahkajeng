@@ -421,7 +421,7 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
           </div>
         </div>
 
-        <div className="overflow-x-auto min-h-[400px]">
+        <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800">
@@ -573,7 +573,7 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
                 onClick={handleSubmit}
                 disabled={isSaving}
                 className={cn(
-                  "flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl flex items-center justify-center gap-3 font-bold transition-all active:scale-95 shadow-lg shadow-emerald-600/20",
+                  "w-full md:w-auto py-4 px-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl flex items-center justify-center gap-3 font-bold transition-all active:scale-95 shadow-lg shadow-emerald-600/20",
                   isSaving && "opacity-50 cursor-not-allowed"
                 )}
               >
