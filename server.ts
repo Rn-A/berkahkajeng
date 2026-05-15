@@ -838,63 +838,75 @@ apiRouter.delete("/sales/:id", authenticateToken, async (req, res) => {
 const dashboardCache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 30000; // 30 seconds
 
-apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
+// Fast dashboard stats endpoint
+apiRouter.get("/dashboard/stats", authenticateToken, async (req, res) => {
   try {
-    const cacheKey = 'global_dashboard';
+    const cacheKey = 'dashboard_stats';
     const cached = dashboardCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      res.setHeader('X-Cache', 'HIT');
+    if (cached && Date.now() - cached.timestamp < 10000) {
       return res.json(cached.data);
     }
     
-    // Set headers for speed
-    res.setHeader('X-Cache', 'MISS');
-    res.setHeader('Cache-Control', 'private, max-age=10, stale-while-revalidate=60');
-
     if (dbConnected && pool) {
       const queries = [
         pool.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM inventory"),
         pool.query("SELECT SUM(total_volume) as total_volume, SUM(total_value) as total_value FROM wood_sets"),
         pool.query("SELECT SUM(total_revenue) as total_revenue, SUM(total_profit) as total_profit FROM sales"),
         pool.query("SELECT SUM(volume) as total_volume FROM sales_items"),
-        pool.query("SELECT SUM(amount) as total_expenses FROM expenses"),
+        pool.query("SELECT SUM(amount) as total_expenses FROM expenses")
+      ];
+      const results = await Promise.all(queries);
+      const data = {
+        inventory: results[0][0][0] || { total_volume: 0, total_value: 0 },
+        purchases: results[1][0][0] || { total_volume: 0, total_value: 0 },
+        sales: { 
+          total_revenue: results[2][0][0]?.total_revenue || 0, 
+          total_profit: results[2][0][0]?.total_profit || 0, 
+          total_volume: results[3][0][0]?.total_volume || 0 
+        },
+        expenses: results[4][0][0] || { total_expenses: 0 }
+      };
+      dashboardCache.set(cacheKey, { data, timestamp: Date.now() });
+      res.json(data);
+    }
+  } catch (e) { res.status(500).json({ error: 'Failed to fetch stats' }); }
+});
+
+// Heavy dashboard charts endpoint
+apiRouter.get("/dashboard/charts", authenticateToken, async (req, res) => {
+  try {
+    const cacheKey = 'dashboard_charts';
+    const cached = dashboardCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return res.json(cached.data);
+    }
+    
+    if (dbConnected && pool) {
+      const queries = [
         pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_volume) as purchase_volume FROM wood_sets GROUP BY month ORDER BY MIN(date)"),
         pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(total_revenue) as sales_revenue, SUM(total_profit) as sales_profit FROM sales GROUP BY month ORDER BY MIN(date)"),
         pool.query("SELECT DATE_FORMAT(date, '%b') as month, SUM(amount) as expense_amount FROM expenses GROUP BY month ORDER BY MIN(date)"),
         pool.query("SELECT wood_type, SUM(total_volume) as volume FROM inventory WHERE total_logs > 0 GROUP BY wood_type")
       ];
-
       const results = await Promise.all(queries);
-      
-      const stock = results[0][0];
-      const purch = results[1][0];
-      const sales = results[2][0];
-      const salesVol = results[3][0];
-      const expenses = results[4][0];
-      const purchTrends = results[5][0];
-      const salesTrends = results[6][0];
-      const expenseTrends = results[7][0];
-      const stockComposition = results[8][0];
-
-      const dashboardData = {
-        inventory: stock[0] || { total_volume: 0, total_value: 0 },
-        purchases: purch[0] || { total_volume: 0, total_value: 0 },
-        sales: { 
-          total_revenue: sales[0]?.total_revenue || 0, 
-          total_profit: sales[0]?.total_profit || 0, 
-          total_volume: salesVol[0]?.total_volume || 0 
-        },
-        expenses: expenses[0] || { total_expenses: 0 },
-        stockComposition,
+      const data = {
         trends: {
-          purchases: purchTrends.length > 0 ? purchTrends : [{ month: 'Jan', purchase_volume: 0 }],
-          sales: salesTrends.length > 0 ? salesTrends : [{ month: 'Jan', sales_revenue: 0, sales_profit: 0 }],
-          expenses: expenseTrends.length > 0 ? expenseTrends : [{ month: 'Jan', expense_amount: 0 }]
-        }
+          purchases: results[0][0].length > 0 ? results[0][0] : [{ month: 'Jan', purchase_volume: 0 }],
+          sales: results[1][0].length > 0 ? results[1][0] : [{ month: 'Jan', sales_revenue: 0, sales_profit: 0 }],
+          expenses: results[2][0].length > 0 ? results[2][0] : [{ month: 'Jan', expense_amount: 0 }]
+        },
+        stockComposition: results[3][0]
       };
+      dashboardCache.set(cacheKey, { data, timestamp: Date.now() });
+      res.json(data);
+    }
+  } catch (e) { res.status(500).json({ error: 'Failed to fetch charts' }); }
+});
 
-      dashboardCache.set(cacheKey, { data: dashboardData, timestamp: Date.now() });
-      res.json(dashboardData);
+// Deprecated old endpoint for backward compatibility
+apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
+  res.redirect('/api/dashboard/stats');
+});
     } else {
       res.json({
         inventory: { total_volume: 0, total_value: 0 },

@@ -307,7 +307,23 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
     };
   }, [period, salesHistory, purchasesHistory, expenses]);
 
-  if (!data) return <div className="p-8 text-center text-zinc-500 dark:text-zinc-400">Memuat data dashboard...</div>;
+  if (!data) return (
+    <div className="p-4 md:p-8 space-y-8 animate-pulse">
+      <div className="flex justify-between items-end gap-4 mb-8">
+        <div className="space-y-2">
+          <div className="h-8 w-64 bg-zinc-200 dark:bg-zinc-800 rounded-lg"></div>
+          <div className="h-4 w-96 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg"></div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-32 bg-zinc-100 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800"></div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const hasChartData = (data as any).trends || (purchasesHistory.length > 0 && salesHistory.length > 0);
 
   // Build stats cards — mandor hanya melihat Stok, Volume Pembelian, Volume Penjualan
   const isOwner = userRole === 'owner';
@@ -464,29 +480,31 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
           { value: 'Pengeluaran (Rp)', color: '#ef4444' },
           { value: 'Arus Kas Bersih (Rp)', color: '#3b82f6' }
         ])}
-
+ 
         <div className="h-[350px]">
-          <React.Suspense fallback={<ChartPlaceholder />}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
-                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{fontSize: 10, fill: '#a1a1aa'}}
-                  width={80}
-                  tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`}
-                />
-                <Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
+          {!hasChartData ? <ChartPlaceholder /> : (
+            <React.Suspense fallback={<ChartPlaceholder />}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{fontSize: 10, fill: '#a1a1aa'}}
+                    width={80}
+                    tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`}
+                  />
+                  <Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
 
-                <Line type="monotone" dataKey="sales_revenue" name="Pendapatan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="purchase_value" name="Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="expense_amount" name="Pengeluaran (Rp)" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="net_cashflow" name="Arus Kas Bersih (Rp)" stroke="#3b82f6" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 5 }} activeDot={{ r: 7 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </React.Suspense>
+                  <Line type="monotone" dataKey="sales_revenue" name="Pendapatan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="purchase_value" name="Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="expense_amount" name="Pengeluaran (Rp)" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="net_cashflow" name="Arus Kas Bersih (Rp)" stroke="#3b82f6" strokeWidth={4} strokeDasharray="5 5" dot={{ r: 5 }} activeDot={{ r: 7 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </React.Suspense>
+          )}
         </div>
       </div>
       )}
@@ -507,47 +525,49 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
         ])}
 
         <div className="h-[400px]">
-          <React.Suspense fallback={<ChartPlaceholder />}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
-                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
-                
-                {/* Left Y-Axis for Rupiah (Value) */}
-                <YAxis 
-                  yAxisId="left" 
-                  orientation="left" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fontSize: 10, fill: '#a1a1aa'}} 
-                  width={80} 
-                  tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`} 
-                />
-                
-                {/* Right Y-Axis for Volume (m³) */}
-                <YAxis 
-                  yAxisId="right" 
-                  orientation="right" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fontSize: 10, fill: '#a1a1aa'}} 
-                  width={40} 
-                  tickFormatter={(v) => `${v.toFixed(0)}`}
-                />
-                
-                <Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
+          {!hasChartData ? <ChartPlaceholder /> : (
+            <React.Suspense fallback={<ChartPlaceholder />}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={groupedData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" className="dark:stroke-zinc-800" />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#a1a1aa'}} />
+                  
+                  {/* Left Y-Axis for Rupiah (Value) */}
+                  <YAxis 
+                    yAxisId="left" 
+                    orientation="left" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 10, fill: '#a1a1aa'}} 
+                    width={80} 
+                    tickFormatter={(v) => `Rp${(v/1000000).toFixed(0)}M`} 
+                  />
+                  
+                  {/* Right Y-Axis for Volume (m³) */}
+                  <YAxis 
+                    yAxisId="right" 
+                    orientation="right" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 10, fill: '#a1a1aa'}} 
+                    width={40} 
+                    tickFormatter={(v) => `${v.toFixed(0)}`}
+                  />
+                  
+                  <Tooltip content={renderLineTooltip} cursor={{ stroke: '#a1a1aa', strokeWidth: 1, strokeDasharray: '5 5' }} />
 
-                {/* Rupiah Lines (Left Axis) */}
-                <Line yAxisId="left" type="monotone" dataKey="sales_revenue" name="Harga Penjualan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                <Line yAxisId="left" type="monotone" dataKey="purchase_value" name="Harga Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                
-                {/* Volume Lines (Right Axis) */}
-                <Line yAxisId="right" type="monotone" dataKey="sales_volume" name="Volume Penjualan (m³)" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
-                <Line yAxisId="right" type="monotone" dataKey="purchase_volume" name="Volume Pembelian (m³)" stroke="#eab308" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
-                <Line yAxisId="right" type="monotone" dataKey="stock_volume" name="Volume Stok Tersedia (m³)" stroke="#06b6d4" strokeWidth={4} dot={{ r: 5 }} activeDot={{ r: 8 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </React.Suspense>
+                  {/* Rupiah Lines (Left Axis) */}
+                  <Line yAxisId="left" type="monotone" dataKey="sales_revenue" name="Harga Penjualan (Rp)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line yAxisId="left" type="monotone" dataKey="purchase_value" name="Harga Pembelian (Rp)" stroke="#f97316" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  
+                  {/* Volume Lines (Right Axis) */}
+                  <Line yAxisId="right" type="monotone" dataKey="sales_volume" name="Volume Penjualan (m³)" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="purchase_volume" name="Volume Pembelian (m³)" stroke="#eab308" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="stock_volume" name="Volume Stok Tersedia (m³)" stroke="#06b6d4" strokeWidth={4} dot={{ r: 5 }} activeDot={{ r: 8 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </React.Suspense>
+          )}
         </div>
       </div>
 

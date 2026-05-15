@@ -148,18 +148,24 @@ export default function App() {
       };
 
       if (view === 'dashboard') {
-        const res = await fetchWithAuth('/api/dashboard');
+        const res = await fetchWithAuth('/api/dashboard/stats');
         await processResponse(res, setDashboardData, 'dashboard');
         
         // Fetch background data for other common metrics with lower priority
         setTimeout(async () => {
           try {
-            const [invRes, salesRes, purchRes, expRes] = await Promise.all([
+            const [chartRes, invRes, salesRes, purchRes, expRes] = await Promise.all([
+              fetchWithAuth('/api/dashboard/charts'),
               fetchWithAuth('/api/inventory'),
               fetchWithAuth('/api/sales'),
               fetchWithAuth('/api/sets'),
               fetchWithAuth('/api/expenses')
             ]);
+            
+            // Merge chart data into dashboardData
+            const chartData = await chartRes?.json();
+            setDashboardData(prev => prev ? { ...prev, ...chartData } : chartData);
+            
             processResponse(invRes, setInventory, 'inventory');
             processResponse(salesRes, setSalesHistory, 'sales');
             processResponse(purchRes, setHistory, 'history');
@@ -167,7 +173,7 @@ export default function App() {
           } catch (e) {
             console.error("Background fetch error:", e);
           }
-        }, 1000);
+        }, 1500);
         return;
       }
 

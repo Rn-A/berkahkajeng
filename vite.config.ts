@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
+            'vendor-core': ['react', 'react-dom'],
             'vendor-recharts': ['recharts'],
             'vendor-icons': ['lucide-react'],
             'vendor-motion': ['motion/react'],
