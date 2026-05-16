@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, Legend, LineChart, Line 
 } from 'recharts';
-import { TrendingUp, Package, ShoppingCart, Wallet, ArrowUpRight, CreditCard, Activity, Download, Database } from 'lucide-react';
+import { TrendingUp, Package, ShoppingCart, Wallet, ArrowUpRight, CreditCard, Activity, Download, Database, Calendar } from 'lucide-react';
 import { DashboardData, Sale, WoodSet, InventoryItem, Expense } from '../types';
 import { roundPrice } from '../lib/utils';
 
