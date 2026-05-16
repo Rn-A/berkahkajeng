@@ -222,6 +222,11 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
+  const [customerName, setCustomerName] = useState('');
+  const [saleDate, setSaleDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [saleItems, setSaleItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -727,4 +732,32 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
       )}
     </div>
   );
+}
+
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(value);
+};
+
+const handlePrint = () => {
+  window.print();
+};
+
+function terbilang(a: number): string {
+  const bilangan = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
+  let kalimat = '';
+  if (a < 12) kalimat = bilangan[a];
+  else if (a < 20) kalimat = terbilang(a - 10) + ' Belas';
+  else if (a < 100) kalimat = terbilang(Math.floor(a / 10)) + ' Puluh ' + terbilang(a % 10);
+  else if (a < 200) kalimat = 'Seratus ' + terbilang(a - 100);
+  else if (a < 1000) kalimat = terbilang(Math.floor(a / 100)) + ' Ratus ' + terbilang(a % 100);
+  else if (a < 2000) kalimat = 'Seribu ' + terbilang(a - 1000);
+  else if (a < 1000000) kalimat = terbilang(Math.floor(a / 1000)) + ' Ribu ' + terbilang(a % 1000);
+  else if (a < 1000000000) kalimat = terbilang(Math.floor(a / 1000000)) + ' Juta ' + terbilang(a % 1000000);
+  else if (a < 1000000000000) kalimat = terbilang(Math.floor(a / 1000000000)) + ' Miliar ' + terbilang(a % 1000000000);
+  else if (a < 1000000000000000) kalimat = terbilang(Math.floor(a / 1000000000000)) + ' Triliun ' + terbilang(a % 1000000000000);
+  return kalimat.trim() + ' Rupiah';
 }
