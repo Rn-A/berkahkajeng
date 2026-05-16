@@ -217,8 +217,8 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
-  const [customerName, setCustomerName] = useState('');
-  const [saleDate, setSaleDate] = useState(() => {
+  const [period, setPeriod] = useState<'all' | 'hari' | 'minggu' | 'bulan' | 'tahun'>('all');
+  const [selectedDate, setSelectedDate] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
@@ -227,10 +227,44 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const filteredHistory = salesHistory.filter(sale =>
-    sale.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sale.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const isWithinPeriod = (dateStr: string) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr).getTime();
+    switch (period) {
+      case 'hari': {
+        const dDate = new Date(dateStr).toISOString().split('T')[0];
+        return dDate === selectedDate;
+      }
+      case 'minggu': {
+        const start = new Date(selectedDate);
+        const day = start.getDay();
+        const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+        start.setDate(diff);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+        return d >= start.getTime() && d <= end.getTime();
+      }
+      case 'bulan': {
+        const [selY, selM] = selectedDate.split('-');
+        const dObj = new Date(dateStr);
+        return dObj.getFullYear() === parseInt(selY) && (dObj.getMonth() + 1) === parseInt(selM);
+      }
+      case 'tahun': {
+        const selY = selectedDate.split('-')[0];
+        return new Date(dateStr).getFullYear() === parseInt(selY);
+      }
+      case 'all': return true;
+      default: return true;
+    }
+  };
+
+  const filteredHistory = salesHistory.filter(sale => {
+    const matchesSearch = sale.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         sale.id.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch && isWithinPeriod(sale.date);
+  });
 
   // Pagination logic
   const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
@@ -361,7 +395,44 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
             <History size={16} className="text-zinc-400" />
             Riwayat Penjualan Terakhir
           </h3>
-          <div className="flex items-center gap-2 w-full lg:w-auto">
+          <div className="flex flex-col lg:flex-row items-center gap-4 w-full lg:w-auto">
+            <div className="bg-white dark:bg-zinc-900 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-wrap lg:flex-nowrap items-center gap-2 shadow-sm w-full lg:w-auto">
+              <div className="flex bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl">
+                {[
+                  { id: 'all', label: 'Semua Waktu' },
+                  { id: 'hari', label: 'Hari Ini' },
+                  { id: 'minggu', label: 'Minggu Ini' },
+                  { id: 'bulan', label: 'Bulan Ini' },
+                  { id: 'tahun', label: 'Tahun Ini' }
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => { setPeriod(opt.id as any); setCurrentPage(1); }}
+                    className={cn(
+                      "px-3 py-1.5 text-[10px] font-black rounded-lg transition-all whitespace-nowrap uppercase",
+                      period === opt.id 
+                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-lg scale-105" 
+                        : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 px-2 border-l border-zinc-200 dark:border-zinc-700 ml-1">
+                <div className="relative flex items-center">
+                  <Calendar size={14} className="absolute left-0 text-zinc-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => { setSelectedDate(e.target.value); setCurrentPage(1); }}
+                    className="bg-transparent border-none text-[10px] font-bold focus:ring-0 dark:text-white cursor-pointer pl-5 py-1"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="relative flex-1 lg:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
               <input
@@ -372,6 +443,7 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
             </div>
+          </div>
             <button
               onClick={exportToCSV}
               className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors shrink-0"

@@ -42,48 +42,43 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const filteredData = useMemo(() => {
-    const isMatch = (dateStr: string) => {
-      if (period === 'all') return true;
-      
-      const dDate = dateStr.split('T')[0];
-      const [y, m] = dDate.split('-');
-      const dYear = parseInt(y);
-      const dMonth = parseInt(m);
-      const d = new Date(dateStr);
-
-      if (period === 'daily') {
-        return dDate === selectedDate;
+    const isWithinPeriod = (dateStr: string) => {
+      if (!dateStr) return false;
+      const d = new Date(dateStr).getTime();
+      switch (period) {
+        case 'daily': {
+          const dDate = new Date(dateStr).toISOString().split('T')[0];
+          return dDate === selectedDate;
+        }
+        case 'weekly': {
+          const start = new Date(selectedDate);
+          const day = start.getDay();
+          const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+          start.setDate(diff);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(start);
+          end.setDate(end.getDate() + 6);
+          end.setHours(23, 59, 59, 999);
+          return d >= start.getTime() && d <= end.getTime();
+        }
+        case 'monthly': {
+          const [selY, selM] = selectedDate.split('-');
+          const dObj = new Date(dateStr);
+          return dObj.getFullYear() === parseInt(selY) && (dObj.getMonth() + 1) === parseInt(selM);
+        }
+        case 'yearly': {
+          const selY = selectedDate.split('-')[0];
+          return new Date(dateStr).getFullYear() === parseInt(selY);
+        }
+        case 'all': return true;
+        default: return true;
       }
-      
-      if (period === 'weekly') {
-        const start = new Date(selectedDate);
-        const day = start.getDay();
-        const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-        start.setDate(diff);
-        start.setHours(0, 0, 0, 0);
-        
-        const end = new Date(start);
-        end.setDate(end.getDate() + 6);
-        end.setHours(23, 59, 59, 999);
-        
-        return d >= start && d <= end;
-      }
-      
-      if (period === 'monthly') {
-        return dYear === selectedYear && dMonth === selectedMonth;
-      }
-      
-      if (period === 'yearly') {
-        return dYear === selectedYear;
-      }
-      
-      return true;
     };
 
     return {
-      sales: sales.filter(s => isMatch(s.date)),
-      purchases: purchases.filter(p => isMatch(p.date)),
-      expenses: expenses.filter(e => isMatch(e.date))
+      sales: sales.filter(s => isWithinPeriod(s.date)),
+      purchases: purchases.filter(p => isWithinPeriod(p.date)),
+      expenses: expenses.filter(e => isWithinPeriod(e.date))
     };
   }, [sales, purchases, expenses, period, selectedDate, selectedMonth, selectedYear]);
 
@@ -163,7 +158,7 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
         </div>
         
         <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-          <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-zinc-900 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+          <div className="bg-white dark:bg-zinc-900 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-wrap lg:flex-nowrap items-center gap-2 shadow-sm w-full lg:w-auto">
             <div className="flex bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl">
               {periodOptions.map((opt) => (
                 <button
@@ -173,7 +168,7 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
                     "px-4 py-2 text-[10px] font-black rounded-lg transition-all whitespace-nowrap uppercase",
                     period === opt.id 
                       ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-lg scale-105" 
-                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                      : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"
                   )}
                 >
                   {opt.label}
@@ -182,45 +177,15 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
             </div>
 
             <div className="flex items-center gap-2 px-2 border-l border-zinc-200 dark:border-zinc-700 ml-1">
-              {(period === 'daily' || period === 'weekly') && (
-                <div className="relative flex items-center">
-                  <Calendar size={14} className="absolute left-0 text-zinc-400 pointer-events-none" />
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="bg-transparent border-none text-[10px] font-bold focus:ring-0 dark:text-white cursor-pointer pl-5 py-1"
-                  />
-                </div>
-              )}
-
-              {(period === 'monthly' || period === 'yearly') && (
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                  className="bg-transparent border-none text-[10px] font-bold focus:ring-0 dark:text-white cursor-pointer py-1"
-                >
-                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                    <option key={y} value={y} className="dark:bg-zinc-900">{y}</option>
-                  ))}
-                </select>
-              )}
-
-              {period === 'monthly' && (
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                  className="bg-transparent border-none text-[10px] font-bold focus:ring-0 dark:text-white cursor-pointer py-1"
-                >
-                  {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => (
-                    <option key={m} value={i + 1} className="dark:bg-zinc-900">{m}</option>
-                  ))}
-                </select>
-              )}
-
-              {period === 'all' && (
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-2">Keseluruhan</span>
-              )}
+              <div className="relative flex items-center">
+                <Calendar size={14} className="absolute left-0 text-zinc-400 pointer-events-none" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-transparent border-none text-[10px] font-bold focus:ring-0 dark:text-white cursor-pointer pl-5 py-1"
+                />
+              </div>
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
