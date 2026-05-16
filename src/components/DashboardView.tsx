@@ -412,8 +412,8 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
           <p className="text-zinc-500 dark:text-zinc-400">Pantau pergerakan stok dan keuangan pangkalan kayu Anda.</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-1.5 flex flex-wrap sm:flex-nowrap items-center gap-2 shadow-sm w-full sm:w-auto">
-            <div className="flex bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-1.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shadow-sm w-full sm:w-auto">
+            <div className="flex bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl overflow-x-auto no-scrollbar">
               {[
                 { id: 'all', label: 'Semua Waktu' },
                 { id: 'hari', label: 'Hari Ini' },
@@ -436,7 +436,8 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
               ))}
             </div>
             
-            <div className="flex items-center gap-2 px-2 border-l border-zinc-200 dark:border-zinc-700 ml-1">
+            <div className="flex items-center justify-between sm:justify-start gap-2 px-2 border-t sm:border-t-0 sm:border-l border-zinc-200 dark:border-zinc-700 pt-2 sm:pt-0 sm:ml-1">
+              <span className="sm:hidden text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Pilih Tanggal:</span>
               <div className="relative flex items-center">
                 <Calendar size={14} className="absolute left-0 text-zinc-400 pointer-events-none" />
                 <input
