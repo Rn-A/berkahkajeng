@@ -136,7 +136,11 @@ const ChartPlaceholder = () => (
 );
 
 export default function DashboardView({ data, salesHistory, purchasesHistory, inventory, expenses, userRole = 'mandor' }: DashboardViewProps) {
-  const [period, setPeriod] = useState<'hari' | 'minggu' | 'bulan' | 'tahun'>('bulan');
+  const [period, setPeriod] = useState<'all' | 'hari' | 'minggu' | 'bulan' | 'tahun'>('bulan');
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
 
   // Compute groupings dynamically based on the period
   const groupedData = useMemo(() => {
@@ -265,10 +269,31 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
       if (!dateStr) return false;
       const d = new Date(dateStr).getTime();
       switch (period) {
-        case 'hari': return d >= startOfToday;
-        case 'minggu': return d >= startOfWeek;
-        case 'bulan': return d >= startOfMonth;
-        case 'tahun': return d >= startOfYear;
+        case 'hari': {
+          const dDate = new Date(dateStr).toISOString().split('T')[0];
+          return dDate === selectedDate;
+        }
+        case 'minggu': {
+          const start = new Date(selectedDate);
+          const day = start.getDay();
+          const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+          start.setDate(diff);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(start);
+          end.setDate(end.getDate() + 6);
+          end.setHours(23, 59, 59, 999);
+          return d >= start.getTime() && d <= end.getTime();
+        }
+        case 'bulan': {
+          const [selY, selM] = selectedDate.split('-');
+          const dObj = new Date(dateStr);
+          return dObj.getFullYear() === parseInt(selY) && (dObj.getMonth() + 1) === parseInt(selM);
+        }
+        case 'tahun': {
+          const selY = selectedDate.split('-')[0];
+          return new Date(dateStr).getFullYear() === parseInt(selY);
+        }
+        case 'all': return true;
         default: return true;
       }
     };
@@ -386,22 +411,42 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Dashboard Ringkasan</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Pantau pergerakan stok dan keuangan pangkalan kayu Anda.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1 flex shadow-sm">
-            {(['hari', 'minggu', 'bulan', 'tahun'] as const).map(p => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`px-3 py-1.5 text-xs font-bold capitalize rounded-lg transition-colors ${
-                  period === p 
-                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow' 
-                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
-                }`}
-                aria-label={`Lihat periode ${p}`}
-              >
-                {p}
-              </button>
-            ))}
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-1.5 flex flex-wrap sm:flex-nowrap items-center gap-2 shadow-sm w-full sm:w-auto">
+            <div className="flex bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl">
+              {[
+                { id: 'all', label: 'Semua Waktu' },
+                { id: 'hari', label: 'Hari Ini' },
+                { id: 'minggu', label: 'Minggu Ini' },
+                { id: 'bulan', label: 'Bulan Ini' },
+                { id: 'tahun', label: 'Tahun Ini' }
+              ].map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => setPeriod(opt.id as any)}
+                  className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded-lg transition-all whitespace-nowrap ${
+                    period === opt.id 
+                      ? 'bg-white text-zinc-900 dark:bg-zinc-700 dark:text-white shadow-sm' 
+                      : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                  }`}
+                  aria-label={`Lihat periode ${opt.label}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            
+            <div className="flex items-center gap-2 px-2 border-l border-zinc-200 dark:border-zinc-700 ml-1">
+              <div className="relative flex items-center">
+                <Calendar size={14} className="absolute left-0 text-zinc-400 pointer-events-none" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-transparent border-none text-[10px] font-bold focus:ring-0 dark:text-white cursor-pointer pl-5 py-1"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>

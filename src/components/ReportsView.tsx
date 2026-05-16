@@ -170,7 +170,7 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
                   key={opt.id}
                   onClick={() => setPeriod(opt.id)}
                   className={cn(
-                    "px-4 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap",
+                    "px-4 py-2 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap uppercase",
                     period === opt.id 
                       ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm" 
                       : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
@@ -183,19 +183,22 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
 
             <div className="flex items-center gap-2 px-2 border-l border-zinc-200 dark:border-zinc-700 ml-1">
               {(period === 'daily' || period === 'weekly') && (
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="bg-transparent border-none text-xs font-bold focus:ring-0 dark:text-white cursor-pointer"
-                />
+                <div className="relative flex items-center">
+                  <Calendar size={14} className="absolute left-0 text-zinc-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="bg-transparent border-none text-[10px] font-bold focus:ring-0 dark:text-white cursor-pointer pl-5 py-1"
+                  />
+                </div>
               )}
 
               {(period === 'monthly' || period === 'yearly') && (
                 <select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                  className="bg-transparent border-none text-xs font-bold focus:ring-0 dark:text-white cursor-pointer"
+                  className="bg-transparent border-none text-[10px] font-bold focus:ring-0 dark:text-white cursor-pointer py-1"
                 >
                   {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
                     <option key={y} value={y} className="dark:bg-zinc-900">{y}</option>
@@ -207,7 +210,7 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
                 <select
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                  className="bg-transparent border-none text-xs font-bold focus:ring-0 dark:text-white cursor-pointer"
+                  className="bg-transparent border-none text-[10px] font-bold focus:ring-0 dark:text-white cursor-pointer py-1"
                 >
                   {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m, i) => (
                     <option key={m} value={i + 1} className="dark:bg-zinc-900">{m}</option>
@@ -216,11 +219,7 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
               )}
 
               {period === 'all' && (
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-2">Keseluruhan Data</span>
-              )}
-              
-              {period === 'weekly' && (
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-2">Periode Mingguan</span>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-2">Keseluruhan</span>
               )}
             </div>
           </div>
