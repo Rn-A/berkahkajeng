@@ -424,9 +424,9 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
                 <button
                   key={opt.id}
                   onClick={() => setPeriod(opt.id as any)}
-                  className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded-lg transition-all whitespace-nowrap ${
+                  className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all whitespace-nowrap ${
                     period === opt.id 
-                      ? 'bg-white text-zinc-900 dark:bg-zinc-700 dark:text-white shadow-sm' 
+                      ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-lg scale-105' 
                       : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                   }`}
                   aria-label={`Lihat periode ${opt.label}`}

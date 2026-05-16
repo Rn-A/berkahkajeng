@@ -170,9 +170,9 @@ export default function ReportsView({ inventory, sales, purchases, expenses }: R
                   key={opt.id}
                   onClick={() => setPeriod(opt.id)}
                   className={cn(
-                    "px-4 py-2 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap uppercase",
+                    "px-4 py-2 text-[10px] font-black rounded-lg transition-all whitespace-nowrap uppercase",
                     period === opt.id 
-                      ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm" 
+                      ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-lg scale-105" 
                       : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                   )}
                 >
