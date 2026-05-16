@@ -53,10 +53,11 @@ const terbilang = (n: number): string => {
   else if (n < 2000) res = "Seribu " + terbilang(n - 1000);
   else if (n < 1000000) res = terbilang(Math.floor(n / 1000)) + " Ribu " + terbilang(n % 1000);
   else if (n < 1000000000) res = terbilang(Math.floor(n / 1000000)) + " Juta " + terbilang(n % 1000000);
+  else if (n < 1000000000000) res = terbilang(Math.floor(n / 1000000000)) + " Miliar " + terbilang(n % 1000000000);
+  else if (n < 1000000000000000) res = terbilang(Math.floor(n / 1000000000000)) + " Triliun " + terbilang(n % 1000000000000);
   return res.trim() + " Rupiah";
 };
 
-// Sub-komponen untuk baris item agar performa input lancar
 interface SaleItemRowProps {
   item: any;
   inventory: InventoryItem[];
@@ -84,7 +85,7 @@ const SaleItemRow = React.memo(({ item, inventory, onUpdate, onRemove }: SaleIte
     i.wood_type === item.wood_type &&
     i.diameter_group === item.diameter_group &&
     i.length === Number(item.length) &&
-    i.condition_val === (item.condition || 'Umum')
+    i.condition_val === item.condition
   );
 
   const handleBlur = (field: string, value: string) => {
@@ -198,7 +199,7 @@ const SaleItemRow = React.memo(({ item, inventory, onUpdate, onRemove }: SaleIte
           />
         </div>
         {selectedInv && (
-          <p className="text-[9px] text-emerald-600 dark:text-emerald-400 mt-1 truncate">Modal: {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(selectedInv.avg_price)}</p>
+          <p className="text-[9px] text-emerald-600 dark:text-emerald-400 mt-1 truncate">Modal: {formatCurrency(selectedInv.avg_price)}</p>
         )}
       </div>
       <div className="md:col-span-1 flex justify-end">
@@ -310,7 +311,8 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
       length: 0,
       volume: 0,
       sale_price_per_m3: 0,
-      total_logs: 0
+      total_logs: 0,
+      condition: ''
     }]);
   };
 
@@ -448,7 +450,6 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
             </div>
-          </div>
             <button
               onClick={exportToCSV}
               className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors shrink-0"
@@ -501,6 +502,30 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="px-6 py-4 bg-zinc-50 dark:bg-zinc-800/30 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+            <p className="text-xs text-zinc-500">
+              Menampilkan {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredHistory.length)} dari {filteredHistory.length} transaksi
+            </p>
+            <div className="flex gap-2">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 disabled:opacity-30 hover:bg-white dark:hover:bg-zinc-800 transition-colors"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 disabled:opacity-30 hover:bg-white dark:hover:bg-zinc-800 transition-colors"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Sale Form Modal */}
@@ -732,32 +757,4 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
       )}
     </div>
   );
-}
-
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(value);
-};
-
-const handlePrint = () => {
-  window.print();
-};
-
-function terbilang(a: number): string {
-  const bilangan = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
-  let kalimat = '';
-  if (a < 12) kalimat = bilangan[a];
-  else if (a < 20) kalimat = terbilang(a - 10) + ' Belas';
-  else if (a < 100) kalimat = terbilang(Math.floor(a / 10)) + ' Puluh ' + terbilang(a % 10);
-  else if (a < 200) kalimat = 'Seratus ' + terbilang(a - 100);
-  else if (a < 1000) kalimat = terbilang(Math.floor(a / 100)) + ' Ratus ' + terbilang(a % 100);
-  else if (a < 2000) kalimat = 'Seribu ' + terbilang(a - 1000);
-  else if (a < 1000000) kalimat = terbilang(Math.floor(a / 1000)) + ' Ribu ' + terbilang(a % 1000);
-  else if (a < 1000000000) kalimat = terbilang(Math.floor(a / 1000000)) + ' Juta ' + terbilang(a % 1000000);
-  else if (a < 1000000000000) kalimat = terbilang(Math.floor(a / 1000000000)) + ' Miliar ' + terbilang(a % 1000000000);
-  else if (a < 1000000000000000) kalimat = terbilang(Math.floor(a / 1000000000000)) + ' Triliun ' + terbilang(a % 1000000000000);
-  return kalimat.trim() + ' Rupiah';
 }
