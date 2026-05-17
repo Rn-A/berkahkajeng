@@ -429,13 +429,13 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
 
               <div className="flex items-center justify-between sm:justify-start gap-2 px-2 border-t sm:border-t-0 sm:border-l border-zinc-200 dark:border-zinc-700 pt-2 sm:pt-0 sm:ml-1">
                 <span className="sm:hidden text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Pilih Tanggal:</span>
-                <div className="relative flex items-center">
-                  <Calendar size={14} className="absolute left-0 text-zinc-400 pointer-events-none" />
+                <div className="relative flex items-center pl-6">
+                  <Calendar size={14} className="absolute left-1 text-zinc-400 pointer-events-none" />
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => { setSelectedDate(e.target.value); setCurrentPage(1); }}
-                    className="bg-transparent border-none text-[10px] font-bold focus:ring-0 dark:text-white cursor-pointer pl-5 py-1"
+                    className="bg-transparent border-none text-[10px] font-bold focus:ring-0 dark:text-white cursor-pointer w-full py-1 p-0"
                   />
                 </div>
               </div>
