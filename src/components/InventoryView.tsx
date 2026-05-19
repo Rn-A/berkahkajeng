@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Filter, Package, Layers, Download } from 'lucide-react';
 import { InventoryItem } from '../types';
-import { cn } from '../lib/utils';
+import { cn, roundPrice } from '../lib/utils';
 
 interface InventoryViewProps {
   inventory: InventoryItem[];
@@ -36,7 +36,7 @@ export default function InventoryView({ inventory }: InventoryViewProps) {
   const totalStats = useMemo(() => {
     return filteredInventory.reduce((acc, item) => ({
       volume: acc.volume + Number(item.total_volume),
-      value: acc.value + Number(item.total_value),
+      value: acc.value + roundPrice(Number(item.total_value)),
       logs: acc.logs + Number(item.total_logs)
     }), { volume: 0, value: 0, logs: 0 });
   }, [filteredInventory]);
@@ -61,8 +61,8 @@ export default function InventoryView({ inventory }: InventoryViewProps) {
       item.length,
       item.total_logs,
       Number(item.total_volume).toFixed(3),
-      item.avg_price,
-      item.total_value
+      roundPrice(Number(item.avg_price)),
+      roundPrice(Number(item.total_value))
     ]);
 
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
@@ -187,8 +187,8 @@ export default function InventoryView({ inventory }: InventoryViewProps) {
                         </td>
                         <td className="px-6 py-4 text-right font-mono text-sm font-bold dark:text-zinc-300">{item.total_logs}</td>
                         <td className="px-6 py-4 text-right font-mono text-sm font-black dark:text-white">{Number(item.total_volume).toFixed(3)}</td>
-                        <td className="px-6 py-4 text-right text-xs font-bold text-zinc-500 dark:text-zinc-400">{formatCurrency(Number(item.avg_price))}</td>
-                        <td className="px-6 py-4 text-right font-black text-zinc-900 dark:text-white">{formatCurrency(Number(item.total_value))}</td>
+                        <td className="px-6 py-4 text-right text-xs font-bold text-zinc-500 dark:text-zinc-400">{formatCurrency(roundPrice(Number(item.avg_price)))}</td>
+                        <td className="px-6 py-4 text-right font-black text-zinc-900 dark:text-white">{formatCurrency(roundPrice(Number(item.total_value)))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -213,12 +213,12 @@ export default function InventoryView({ inventory }: InventoryViewProps) {
                       </div>
                       <div className="text-right">
                         <p className="label-caps mb-1">Total Nilai</p>
-                        <p className="font-black text-sm text-zinc-900 dark:text-white">{formatCurrency(Number(item.total_value))}</p>
+                        <p className="font-black text-sm text-zinc-900 dark:text-white">{formatCurrency(roundPrice(Number(item.total_value)))}</p>
                       </div>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-zinc-50 dark:border-zinc-800">
                       <span className="label-caps">Harga Rata-rata</span>
-                      <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">{formatCurrency(Number(item.avg_price))}/m³</span>
+                      <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">{formatCurrency(roundPrice(Number(item.avg_price)))}/m³</span>
                     </div>
                   </div>
                 ))}
