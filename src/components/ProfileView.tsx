@@ -105,7 +105,7 @@ export default function ProfileView({ auth, onUpdateAuth }: ProfileViewProps) {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className={`grid gap-6 ${auth.user?.role === 'owner' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-lg mx-auto'}`}>
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
                 <User size={16} className="text-zinc-400" />
@@ -148,51 +148,55 @@ export default function ProfileView({ auth, onUpdateAuth }: ProfileViewProps) {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                <Lock size={16} className="text-zinc-400" />
-                Ubah Password
-              </h3>
-
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
-                  Password Saat Ini
-                </label>
-                <input
-                  type="password"
-                  value={formData.current_password}
-                  onChange={e => setFormData({...formData, current_password: e.target.value})}
-                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-green-500 dark:text-white outline-none transition-all"
-                  placeholder="Isi jika ingin ganti password"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
-                  Password Baru
-                </label>
-                <input
-                  type="password"
-                  value={formData.new_password}
-                  onChange={e => setFormData({...formData, new_password: e.target.value})}
-                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-green-500 dark:text-white outline-none transition-all"
-                  placeholder="Minimal 6 karakter"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
-                  Konfirmasi Password Baru
-                </label>
-                <input
-                  type="password"
-                  value={formData.confirm_password}
-                  onChange={e => setFormData({...formData, confirm_password: e.target.value})}
-                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-green-500 dark:text-white outline-none transition-all"
-                  placeholder="Ketik ulang password baru"
-                />
-              </div>
             </div>
+
+            {auth.user?.role === 'owner' && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                  <Lock size={16} className="text-zinc-400" />
+                  Ubah Password
+                </h3>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
+                    Password Saat Ini
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.current_password}
+                    onChange={e => setFormData({...formData, current_password: e.target.value})}
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-green-500 dark:text-white outline-none transition-all"
+                    placeholder="Isi jika ingin ganti password"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
+                    Password Baru
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.new_password}
+                    onChange={e => setFormData({...formData, new_password: e.target.value})}
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-green-500 dark:text-white outline-none transition-all"
+                    placeholder="Minimal 6 karakter"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
+                    Konfirmasi Password Baru
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.confirm_password}
+                    onChange={e => setFormData({...formData, confirm_password: e.target.value})}
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-green-500 dark:text-white outline-none transition-all"
+                    placeholder="Ketik ulang password baru"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
