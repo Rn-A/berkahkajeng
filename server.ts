@@ -480,7 +480,7 @@ apiRouter.get("/sets", authenticateToken, async (req, res) => {
       // 3. Get all logs for these categories in one query (if any categories exist)
       let allLogs: any[] = [];
       if (catIds.length > 0) {
-        [allLogs] = await pool!.query("SELECT * FROM log_entries WHERE category_id IN (?)", [catIds]);
+        [allLogs] = await pool!.query("SELECT * FROM log_entries WHERE category_id IN (?)", [catIds]) as any;
       }
 
       // 4. Organize data efficiently using Maps
@@ -877,9 +877,9 @@ apiRouter.get("/dashboard", authenticateToken, async (req, res) => {
         },
         expenses: results[4][0][0] || { total_expenses: 0 },
         trends: {
-          purchases: results[5][0].length > 0 ? results[5][0] : [{ month: 'Jan', purchase_volume: 0 }],
-          sales: results[6][0].length > 0 ? results[6][0] : [{ month: 'Jan', sales_revenue: 0, sales_profit: 0 }],
-          expenses: results[7][0].length > 0 ? results[7][0] : [{ month: 'Jan', expense_amount: 0 }]
+          purchases: (results[5][0] as any[]).length > 0 ? results[5][0] : [{ month: 'Jan', purchase_volume: 0 }],
+          sales: (results[6][0] as any[]).length > 0 ? results[6][0] : [{ month: 'Jan', sales_revenue: 0, sales_profit: 0 }],
+          expenses: (results[7][0] as any[]).length > 0 ? results[7][0] : [{ month: 'Jan', expense_amount: 0 }]
         },
         stockComposition: results[8][0]
       };
