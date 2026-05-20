@@ -148,8 +148,6 @@ export default function ProfileView({ auth, onUpdateAuth }: ProfileViewProps) {
               </div>
             </div>
 
-            </div>
-
             {auth.user?.role === 'owner' && (
               <div className="space-y-4">
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
