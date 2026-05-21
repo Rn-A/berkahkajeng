@@ -104,6 +104,8 @@ const SaleItemRow = React.memo(({ item, inventory, onUpdate, onRemove }: SaleIte
     }
   };
 
+  const isX = item.condition === 'X' || item.diameter_group === 'X' || item.diameter_group === '<10';
+
   return (
     <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm grid grid-cols-1 md:grid-cols-12 gap-4 items-end relative group hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
       <div className="md:col-span-2">
@@ -174,18 +176,21 @@ const SaleItemRow = React.memo(({ item, inventory, onUpdate, onRemove }: SaleIte
           type="number"
           min="0"
           step="0.001"
-          className="input-field w-full font-mono dark:bg-zinc-900 dark:text-white"
+          className="input-field w-full font-mono dark:bg-zinc-900 dark:text-white disabled:opacity-50"
           placeholder="0.000"
-          value={tempVolume}
+          value={isX ? '0' : tempVolume}
           onChange={(e) => setTempVolume(e.target.value)}
           onBlur={(e) => handleBlur('volume', e.target.value)}
+          disabled={isX}
         />
-        {selectedInv && (
+        {selectedInv && !isX && (
           <p className="text-[9px] text-zinc-400 mt-1">Stok: {selectedInv.total_volume.toFixed(3)} m³</p>
         )}
       </div>
       <div className="md:col-span-2">
-        <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Harga Jual / m³</label>
+        <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">
+          {isX ? 'Harga Jual / Batang' : 'Harga Jual / m³'}
+        </label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-xs">Rp</span>
           <input
@@ -325,10 +330,18 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
   };
 
   const totals = useMemo(() => {
-    const rawTotals = saleItems.reduce((acc, item) => ({
-      volume: acc.volume + Number(item.volume || 0),
-      revenue: acc.revenue + (Number(item.volume || 0) * Number(item.sale_price_per_m3 || 0))
-    }), { volume: 0, revenue: 0 });
+    const rawTotals = saleItems.reduce((acc, item) => {
+      const isX = item.condition === 'X' || item.diameter_group === 'X' || item.diameter_group === '<10';
+      const vol = isX ? 0 : Number(item.volume || 0);
+      const rev = isX 
+        ? (Number(item.total_logs || 0) * Number(item.sale_price_per_m3 || 0))
+        : (vol * Number(item.sale_price_per_m3 || 0));
+        
+      return {
+        volume: acc.volume + vol,
+        revenue: acc.revenue + rev
+      };
+    }, { volume: 0, revenue: 0 });
 
     return { ...rawTotals, revenue: roundPrice(rawTotals.revenue) };
   }, [saleItems]);

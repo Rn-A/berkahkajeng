@@ -606,10 +606,11 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
 
       for (const log of cat.logs) {
         logValues.push([log.id, cat.id, log.diameter, log.volume]);
-        const group = getDiameterGroup(log.diameter);
-        if (!logGroups[group]) logGroups[group] = { count: 0, volume: 0, value: 0 };
-
+        const baseGroup = getDiameterGroup(log.diameter);
         const isX = cat.condition === 'X' || log.diameter < 10;
+        const group = isX ? 'X' : baseGroup;
+
+        if (!logGroups[group]) logGroups[group] = { count: 0, volume: 0, value: 0 };
         const vol = isX ? 0 : log.volume;
         const val = (log.diameter < 10) ? 1000 : (log.volume * cat.pricePerM3);
 
@@ -623,15 +624,14 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
       }
 
       for (const [group, data] of Object.entries(logGroups)) {
-        await connection.query(`
-          INSERT INTO inventory (wood_type, diameter_group, length, condition_val, total_logs, total_volume, avg_price, total_value)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          ON DUPLICATE KEY UPDATE
-            total_logs = total_logs + VALUES(total_logs),
-            total_volume = total_volume + VALUES(total_volume),
-            total_value = total_value + VALUES(total_value),
-            avg_price = IF((total_volume + VALUES(total_volume)) > 0, (total_value + VALUES(total_value)) / (total_volume + VALUES(total_volume)), 0)
-        `, [cat.woodType, group, cat.length, (group === 'X' ? 'X' : (cat.condition || 'Umum')), data.count, data.volume, (data.volume > 0 ? data.value / data.volume : 0), data.value]);
+        await connection.query(
+          "INSERT INTO inventory (wood_type, diameter_group, length, condition_val, total_logs, total_volume, avg_price, total_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE total_logs = total_logs + ?, total_volume = total_volume + ?, total_value = total_value + ?, avg_price = CASE WHEN total_volume > 0 THEN total_value / total_volume ELSE 0 END",
+          [
+            cat.woodType, group, cat.length, (group === 'X' ? 'X' : (cat.condition || 'Umum')),
+            data.count, data.volume, (data.volume > 0 ? data.value / data.volume : 0), data.value,
+            data.count, data.volume, data.value
+          ]
+        );
       }
     }
     await connection.commit();
@@ -661,10 +661,12 @@ apiRouter.delete("/sets/:id", authenticateToken, async (req, res) => {
       const [logs]: any = await connection.query("SELECT * FROM log_entries WHERE category_id = ?", [cat.id]);
       const logGroups: Record<string, { count: number, volume: number, value: number }> = {};
       for (const log of logs) {
-        const group = getDiameterGroup(log.diameter);
+        const baseGroup = getDiameterGroup(log.diameter);
+        const isX = cat.condition_val === 'X' || log.diameter < 10;
+        const group = isX ? 'X' : baseGroup;
+        
         if (!logGroups[group]) logGroups[group] = { count: 0, volume: 0, value: 0 };
 
-        const isX = cat.condition_val === 'X' || log.diameter < 10;
         const vol = isX ? 0 : log.volume;
         const val = (log.diameter < 10) ? 1000 : (log.volume * cat.pricePerM3);
 
@@ -678,7 +680,8 @@ apiRouter.delete("/sets/:id", authenticateToken, async (req, res) => {
           UPDATE inventory 
           SET total_logs = GREATEST(0, total_logs - ?), 
               total_volume = GREATEST(0, total_volume - ?), 
-              total_value = GREATEST(0, total_value - ?)
+              total_value = GREATEST(0, total_value - ?),
+              avg_price = CASE WHEN total_volume > 0 THEN total_value / total_volume ELSE 0 END
           WHERE wood_type = ? AND diameter_group = ? AND length = ? AND condition_val = ?
         `, [data.count, data.volume, data.value, cat.woodType, group, cat.length, (group === 'X' ? 'X' : (cat.condition_val || 'Umum'))]);
       }
@@ -753,7 +756,6 @@ apiRouter.get("/sales", authenticateToken, async (req, res) => {
 apiRouter.post("/sales", authenticateToken, async (req, res) => {
   const { id, customer_name, date, items } = req.body;
   
-  // Validasi Input
   if (!customer_name || customer_name.trim().length < 2) {
     return res.status(400).json({ error: 'Nama pelanggan tidak valid' });
   }
@@ -772,30 +774,52 @@ apiRouter.post("/sales", authenticateToken, async (req, res) => {
     await connection.beginTransaction();
     let totalRev = 0, totalCost = 0;
 
-    // Insert parent record first to satisfy foreign key constraint in sales_items
     await connection.query("INSERT INTO sales (id, customer_name, date, total_revenue, total_cost, total_profit) VALUES (?, ?, ?, 0, 0, 0)", [id, customer_name, date]);
 
+    let totalLogs = 0;
     for (const item of items) {
       const [inv]: any = await connection.query("SELECT * FROM inventory WHERE wood_type = ? AND diameter_group = ? AND length = ? AND condition_val = ?", [item.wood_type, item.diameter_group, item.length, item.condition || 'Umum']);
-      if (inv.length === 0 || inv[0].total_volume < item.volume) throw new Error("Stok tidak cukup");
-      const cost = Number(inv[0].avg_price);
-      totalRev += item.volume * item.sale_price_per_m3;
-      totalCost += item.volume * cost;
+      if (inv.length === 0) throw new Error("Stok tidak ditemukan");
+      
+      const isX = item.condition === 'X' || item.diameter_group === 'X' || item.diameter_group === '<10';
+      
+      let itemRev = 0;
+      let itemCost = 0;
+      let logsToDeduct = 0;
 
-      // Calculate proportional log deduction based on volume fraction sold
-      const currentVolume = Number(inv[0].total_volume);
-      const currentLogs = Number(inv[0].total_logs);
-      const volumeFraction = currentVolume > 0 ? item.volume / currentVolume : 1;
-      const logsToDeduct = Math.round(currentLogs * volumeFraction);
+      if (isX) {
+        if (inv[0].total_logs < item.total_logs) throw new Error(`Stok batang tidak cukup (Minta ${item.total_logs}, Sisa ${inv[0].total_logs})`);
+        itemRev = item.total_logs * item.sale_price_per_m3; // For X, price is per log
+        const costPerLog = inv[0].total_logs > 0 ? Number(inv[0].total_value) / Number(inv[0].total_logs) : 0;
+        itemCost = item.total_logs * costPerLog;
+        logsToDeduct = item.total_logs;
+      } else {
+        if (inv[0].total_volume < item.volume) throw new Error(`Stok volume tidak cukup (Minta ${item.volume}, Sisa ${inv[0].total_volume})`);
+        itemRev = item.volume * item.sale_price_per_m3;
+        itemCost = item.volume * Number(inv[0].avg_price);
+        const currentVolume = Number(inv[0].total_volume);
+        const currentLogs = Number(inv[0].total_logs);
+        const volumeFraction = currentVolume > 0 ? item.volume / currentVolume : 1;
+        logsToDeduct = Math.round(currentLogs * volumeFraction);
+      }
 
-      // Simpan logs_deducted untuk reversal
-      await connection.query("INSERT INTO sales_items (id, sale_id, wood_type, diameter_group, length, condition_val, volume, logs_deducted, sale_price_per_m3, cost_price_per_m3, subtotal_revenue, subtotal_cost, profit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [crypto.randomUUID(), id, item.wood_type, item.diameter_group, item.length, item.condition || '', item.volume, logsToDeduct, item.sale_price_per_m3, cost, item.volume * item.sale_price_per_m3, item.volume * cost, (item.volume * item.sale_price_per_m3) - (item.volume * cost)]);
-      await connection.query("UPDATE inventory SET total_logs = GREATEST(0, total_logs - ?), total_volume = GREATEST(0, total_volume - ?), total_value = GREATEST(0, total_value - ?) WHERE id = ?", [logsToDeduct, item.volume, item.volume * cost, inv[0].id]);
+      totalRev += itemRev;
+      totalCost += itemCost;
+      totalLogs += logsToDeduct;
 
-      // Clean up: if remaining volume is essentially zero (floating-point residual), zero out everything
-      await connection.query("UPDATE inventory SET total_logs = 0, total_volume = 0, total_value = 0, avg_price = 0 WHERE id = ? AND total_volume < 0.001", [inv[0].id]);
+      await connection.query("INSERT INTO sales_items (id, sale_id, wood_type, diameter_group, length, condition_val, volume, logs_deducted, sale_price_per_m3, cost_price_per_m3, subtotal_revenue, subtotal_cost, profit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+        [crypto.randomUUID(), id, item.wood_type, item.diameter_group, item.length, item.condition || '', isX ? 0 : item.volume, logsToDeduct, item.sale_price_per_m3, (isX ? itemCost/item.total_logs : Number(inv[0].avg_price)), itemRev, itemCost, itemRev - itemCost]);
+
+      await connection.query(
+        "UPDATE inventory SET total_logs = GREATEST(0, total_logs - ?), total_volume = GREATEST(0, total_volume - ?), total_value = GREATEST(0, total_value - ?) WHERE id = ?",
+        [logsToDeduct, isX ? 0 : item.volume, itemCost, inv[0].id]
+      );
+      
+      await connection.query(
+        "UPDATE inventory SET avg_price = CASE WHEN total_volume > 0 THEN total_value / total_volume ELSE 0 END WHERE id = ?",
+        [inv[0].id]
+      );
     }
-
     // Update the parent record with calculated totals
     totalRev = roundPrice(totalRev);
     totalCost = roundPrice(totalCost);
