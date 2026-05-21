@@ -714,18 +714,32 @@ apiRouter.get("/inventory", authenticateToken, async (req, res) => {
 apiRouter.get("/sales", authenticateToken, async (req, res) => {
   try {
     if (dbConnected && pool) {
-      const [sales]: any = await pool!.query(`
-        SELECT s.*, CAST(SUM(si.volume) AS DOUBLE) as total_volume 
-        FROM sales s 
-        LEFT JOIN sales_items si ON s.id = si.sale_id 
-        GROUP BY s.id 
-        ORDER BY s.date DESC
-      `);
-      
+      const [sales]: any = await pool!.query("SELECT * FROM sales ORDER BY date DESC");
+      if (sales.length === 0) return res.json([]);
+
+      const saleIds = sales.map((s: any) => s.id);
+      const [allItems]: any = await pool!.query(
+        "SELECT * FROM sales_items WHERE sale_id IN (?) ORDER BY wood_type, length, diameter_group",
+        [saleIds]
+      );
+
+      const itemsBySale = new Map<string, any[]>();
+      allItems.forEach((item: any) => {
+        if (!itemsBySale.has(item.sale_id)) itemsBySale.set(item.sale_id, []);
+        itemsBySale.get(item.sale_id)!.push({
+          ...item,
+          condition: item.condition_val || 'Umum',
+        });
+      });
+
       const formattedSales = sales.map((sale: any) => {
         let d = sale.date instanceof Date ? sale.date : new Date(sale.date);
         let dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        return { ...sale, date: dateStr };
+        return {
+          ...sale,
+          date: dateStr,
+          items: itemsBySale.get(sale.id) || [],
+        };
       });
       res.json(formattedSales);
     } else {

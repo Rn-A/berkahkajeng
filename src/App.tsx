@@ -245,6 +245,18 @@ export default function App() {
             const exR = await fetchWithAuth('/api/expenses');
             if (exR?.ok) setExpenses(await exR.json());
             break;
+          case 'reports':
+            const [repSalesR, repPurchR, repExpR, repInvR] = await Promise.all([
+              fetchWithAuth('/api/sales'),
+              fetchWithAuth('/api/sets'),
+              fetchWithAuth('/api/expenses'),
+              fetchWithAuth('/api/inventory'),
+            ]);
+            if (repSalesR?.ok) setSalesHistory(await repSalesR.json());
+            if (repPurchR?.ok) setHistory(await repPurchR.json());
+            if (repExpR?.ok) setExpenses(await repExpR.json());
+            if (repInvR?.ok) setInventory(await repInvR.json());
+            break;
           case 'suppliers':
             const spR = await fetchWithAuth('/api/suppliers');
             if (spR?.ok) setSuppliers(await spR.json());
