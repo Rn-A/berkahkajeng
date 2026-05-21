@@ -38,10 +38,6 @@ export default function ReportsView({
   purchases = [],
   expenses = [],
 }: ReportsViewProps) {
-  const safeInventory = Array.isArray(inventory) ? inventory : [];
-  const safeSales = Array.isArray(sales) ? sales : [];
-  const safePurchases = Array.isArray(purchases) ? purchases : [];
-  const safeExpenses = Array.isArray(expenses) ? expenses : [];
   const [period, setPeriod] = useState<Period>('all');
   const [selectedDate, setSelectedDate] = useState(() => {
     const d = new Date();
@@ -85,27 +81,27 @@ export default function ReportsView({
     };
 
     return {
-      sales: safeSales.filter(s => isWithinPeriod(s.date)),
-      purchases: safePurchases.filter(p => isWithinPeriod(p.date)),
-      expenses: safeExpenses.filter(e => isWithinPeriod(e.date))
+      sales: sales.filter(s => isWithinPeriod(s.date)),
+      purchases: purchases.filter(p => isWithinPeriod(p.date)),
+      expenses: expenses.filter(e => isWithinPeriod(e.date))
     };
-  }, [safeSales, safePurchases, safeExpenses, period, selectedDate, selectedMonth, selectedYear]);
+  }, [sales, purchases, expenses, period, selectedDate, selectedMonth, selectedYear]);
 
   const financialSummary = useMemo(() => {
     const { sales: fSales, purchases: fPurchases, expenses: fExpenses } = filteredData;
 
-    const totalRevenue = roundPrice(fSales.reduce((acc, s) => acc + Number(s.total_revenue || 0), 0));
-    const totalCost = roundPrice(fSales.reduce((acc, s) => acc + Number(s.total_cost || 0), 0));
-    const totalExpenses = roundPrice(fExpenses.reduce((acc, e) => acc + Number(e.amount || 0), 0));
+    const totalRevenue = roundPrice(fSales.reduce((acc, s) => acc + Number(s.total_revenue), 0));
+    const totalCost = roundPrice(fSales.reduce((acc, s) => acc + Number(s.total_cost), 0));
+    const totalExpenses = roundPrice(fExpenses.reduce((acc, e) => acc + Number(e.amount), 0));
     const totalProfit = roundPrice(totalRevenue - totalCost - totalExpenses);
-    const totalInventoryValue = roundPrice(safeInventory.reduce((acc, i) => acc + Number(i.total_value || 0), 0));
+    const totalInventoryValue = roundPrice(inventory.reduce((acc, i) => acc + Number(i.total_value), 0));
     
     const totalPurchaseVolume = fPurchases.reduce((acc, p) => acc + (p.total_volume || 0), 0);
     
     const totalPurchaseValue = roundPrice(fPurchases.reduce((acc, p) => acc + (p.total_value || 0), 0));
 
     const totalSalesVolume = fSales.reduce((acc, s) => {
-      const items = Array.isArray(s.items) ? s.items : [];
+      const items = s.items ?? [];
       return acc + items.reduce((sum, item) => sum + Number(item.volume || 0), 0);
     }, 0);
 
@@ -124,7 +120,7 @@ export default function ReportsView({
       avgPurchasePrice,
       avgSalesPrice
     };
-  }, [safeInventory, filteredData]);
+  }, [inventory, filteredData]);
 
   const exportToCSV = () => {
     const headers = ['Kategori', 'Nilai (Rp)'];
@@ -348,7 +344,7 @@ export default function ReportsView({
                     <td className="px-6 py-4 text-xs font-medium text-zinc-500 dark:text-zinc-400">{s.date}</td>
                     <td className="px-6 py-4 font-bold text-sm text-zinc-900 dark:text-white">{s.customer_name}</td>
                     <td className="px-6 py-4 text-right font-mono text-sm font-bold text-zinc-700 dark:text-zinc-300">
-                      {(Array.isArray(s.items) ? s.items : []).reduce((acc, i) => acc + Number(i.volume || 0), 0).toFixed(3)} <span className="text-[10px] font-bold text-zinc-400">m³</span>
+                      {(s.items ?? []).reduce((acc, i) => acc + Number(i.volume || 0), 0).toFixed(3)} <span className="text-[10px] font-bold text-zinc-400">m³</span>
                     </td>
                     <td className="px-6 py-4 text-right font-black text-emerald-600 dark:text-emerald-400">
                       {formatCurrency(roundPrice(s.total_revenue))}
