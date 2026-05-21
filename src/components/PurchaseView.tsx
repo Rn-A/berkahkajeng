@@ -252,11 +252,15 @@ export default function PurchaseView({
 
   const addCategory = () => {
     if (!activeSet) return;
+    const name = sessionCondition === 'X' 
+      ? 'X' 
+      : (determineWoodCategory(sessionCondition, sessionLength, 20) || `${sessionWoodType} ${sessionLength}cm`);
     const newCategory: WoodCategory = {
       id: crypto.randomUUID(),
-      woodType: 'Jati',
-      length: 0,
-      condition: 'Super',
+      name: name,
+      woodType: sessionWoodType,
+      length: sessionLength,
+      condition: sessionCondition,
       pricePerM3: 0,
       logs: []
     };
@@ -738,7 +742,20 @@ export default function PurchaseView({
                 <select
                       className="input-field w-full"
                       value={sessionWoodType}
-                      onChange={(e) => setSessionWoodType(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSessionWoodType(val);
+                        if (selectedCategoryId) {
+                          const cat = activeSet?.categories.find(c => c.id === selectedCategoryId);
+                          if (cat) {
+                            const repDiameter = cat.logs[0]?.diameter ?? 20;
+                            const newName = cat.condition === 'X'
+                              ? 'X'
+                              : (determineWoodCategory(cat.condition, cat.length, repDiameter) || `${val} ${cat.length}cm`);
+                            updateCategory(selectedCategoryId, { woodType: val, name: newName });
+                          }
+                        }
+                      }}
                     >
                       {woodTypes.map((type) => (
                         <option key={type.name} value={type.name}>{type.name}</option>
@@ -767,7 +784,30 @@ export default function PurchaseView({
                   {[100, 130, 200, 260].map(len => (
                     <button
                       key={len}
-                      onClick={() => setSessionLength(len)}
+                      onClick={() => {
+                        setSessionLength(len);
+                        if (selectedCategoryId) {
+                          const cat = activeSet?.categories.find(c => c.id === selectedCategoryId);
+                          if (cat) {
+                            const repDiameter = cat.logs[0]?.diameter ?? 20;
+                            const newName = cat.condition === 'X'
+                              ? 'X'
+                              : (determineWoodCategory(cat.condition, len, repDiameter) || `${cat.woodType} ${len}cm`);
+                            
+                            // Recalculate volume of all logs using the new length
+                            const updatedLogs = cat.logs.map(log => ({
+                              ...log,
+                              volume: calculateVolume(log.diameter, len)
+                            }));
+                            
+                            updateCategory(selectedCategoryId, { 
+                              length: len, 
+                              name: newName,
+                              logs: updatedLogs
+                            });
+                          }
+                        }
+                      }}
                       className={`px-2 py-1 text-[10px] font-bold rounded flex-1 min-w-[50px] transition-all active:scale-95 ${sessionLength === len
                         ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm'
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700'
@@ -783,7 +823,31 @@ export default function PurchaseView({
                       className="w-full h-full px-2 py-1 text-[10px] font-bold rounded bg-transparent text-zinc-900 dark:text-white border border-transparent focus:border-zinc-300 dark:focus:border-zinc-600 focus:outline-none"
                       placeholder="Lain"
                       value={sessionLength || ''}
-                      onChange={(e) => setSessionLength(Math.max(0, parseFloat(e.target.value) || 0))}
+                      onChange={(e) => {
+                        const len = Math.max(0, parseFloat(e.target.value) || 0);
+                        setSessionLength(len);
+                        if (selectedCategoryId) {
+                          const cat = activeSet?.categories.find(c => c.id === selectedCategoryId);
+                          if (cat) {
+                            const repDiameter = cat.logs[0]?.diameter ?? 20;
+                            const newName = cat.condition === 'X'
+                              ? 'X'
+                              : (determineWoodCategory(cat.condition, len, repDiameter) || `${cat.woodType} ${len}cm`);
+                            
+                            // Recalculate volume of all logs using the new length
+                            const updatedLogs = cat.logs.map(log => ({
+                              ...log,
+                              volume: calculateVolume(log.diameter, len)
+                            }));
+                            
+                            updateCategory(selectedCategoryId, { 
+                              length: len, 
+                              name: newName,
+                              logs: updatedLogs
+                            });
+                          }
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -794,7 +858,19 @@ export default function PurchaseView({
                   {(['X', 'Rijelk', 'C/Standar', 'Kerab', 'Super kecil', 'Super'] as WoodCondition[]).map(grade => (
                     <button
                       key={grade}
-                      onClick={() => setSessionCondition(grade)}
+                      onClick={() => {
+                        setSessionCondition(grade);
+                        if (selectedCategoryId) {
+                          const cat = activeSet?.categories.find(c => c.id === selectedCategoryId);
+                          if (cat) {
+                            const repDiameter = cat.logs[0]?.diameter ?? 20;
+                            const newName = grade === 'X'
+                              ? 'X'
+                              : (determineWoodCategory(grade, cat.length, repDiameter) || `${cat.woodType} ${cat.length}cm`);
+                            updateCategory(selectedCategoryId, { condition: grade, name: newName });
+                          }
+                        }
+                      }}
                       className={`px-2 py-1 text-[10px] font-bold rounded flex-1 min-w-[60px] transition-all active:scale-95 ${sessionCondition === grade
                         ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm'
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700'
