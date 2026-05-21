@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Plus,
   Trash2,
@@ -200,6 +200,24 @@ export default function PurchaseView({
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
+
+  // Reset selection & sync session states whenever the active set changes
+  useEffect(() => {
+    if (activeSet) {
+      if (activeSet.categories.length > 0) {
+        const firstCat = activeSet.categories[0];
+        setSelectedCategoryId(firstCat.id);
+        setSessionWoodType(firstCat.woodType);
+        setSessionLength(firstCat.length);
+        setSessionCondition(firstCat.condition);
+      } else {
+        setSelectedCategoryId(null);
+        // Keep current sessionWoodType — don't force 'Jati'
+      }
+    } else {
+      setSelectedCategoryId(null);
+    }
+  }, [activeSet?.id]);
 
   const filteredHistory = history.filter(set =>
     set.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||

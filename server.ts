@@ -571,8 +571,8 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
             SET total_logs = GREATEST(0, total_logs - ?), 
                 total_volume = GREATEST(0, total_volume - ?), 
                 total_value = GREATEST(0, total_value - ?)
-            WHERE wood_type = ? AND diameter_group = ? AND length = ?
-          `, [data.count, data.volume, data.value, cat.woodType, group, cat.length]);
+            WHERE wood_type = ? AND diameter_group = ? AND length = ? AND condition_val = ?
+          `, [data.count, data.volume, data.value, cat.woodType, group, cat.length, (group === 'X' ? 'X' : (cat.condition_val || 'Umum'))]);
         }
         // Delete old logs and categories to prevent primary key conflicts or orphaned data
         await connection.query("DELETE FROM log_entries WHERE category_id = ?", [cat.id]);
