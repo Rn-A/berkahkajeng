@@ -96,9 +96,9 @@ export default function ReportsView({
     const totalProfit = roundPrice(totalRevenue - totalCost - totalExpenses);
     const totalInventoryValue = roundPrice(inventory.reduce((acc, i) => acc + Number(i.total_value), 0));
     
-    const totalPurchaseVolume = fPurchases.reduce((acc, p) => acc + (p.total_volume || 0), 0);
+    const totalPurchaseVolume = fPurchases.reduce((acc, p) => acc + Number(p.total_volume || 0), 0);
     
-    const totalPurchaseValue = roundPrice(fPurchases.reduce((acc, p) => acc + (p.total_value || 0), 0));
+    const totalPurchaseValue = roundPrice(fPurchases.reduce((acc, p) => acc + Number(p.total_value || 0), 0));
 
     const totalSalesVolume = fSales.reduce((acc, s) => {
       const items = s.items ?? [];
