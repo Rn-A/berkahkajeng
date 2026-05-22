@@ -155,7 +155,7 @@ const SaleItemRow = React.memo(({ item, inventory, onUpdate, onRemove }: SaleIte
           {availableGroups.map(g => <option key={g} value={g} className="dark:bg-zinc-900">{g}</option>)}
         </select>
       </div>
-      <div className="md:col-span-1">
+      <div className={isX ? "md:col-span-2" : "md:col-span-1"}>
         <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Batang</label>
         <input
           type="number"
@@ -170,24 +170,25 @@ const SaleItemRow = React.memo(({ item, inventory, onUpdate, onRemove }: SaleIte
           <p className="text-[9px] text-zinc-400 mt-1">Stok: {selectedInv.total_logs}</p>
         )}
       </div>
-      <div className="md:col-span-2">
-        <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Volume (m³)</label>
-        <input
-          type="number"
-          min="0"
-          step="0.001"
-          className="input-field w-full font-mono dark:bg-zinc-900 dark:text-white disabled:opacity-50"
-          placeholder="0.000"
-          value={isX ? '0' : tempVolume}
-          onChange={(e) => setTempVolume(e.target.value)}
-          onBlur={(e) => handleBlur('volume', e.target.value)}
-          disabled={isX}
-        />
-        {selectedInv && !isX && (
-          <p className="text-[9px] text-zinc-400 mt-1">Stok: {selectedInv.total_volume.toFixed(3)} m³</p>
-        )}
-      </div>
-      <div className="md:col-span-2">
+      {!isX && (
+        <div className="md:col-span-2">
+          <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Volume (m³)</label>
+          <input
+            type="number"
+            min="0"
+            step="0.001"
+            className="input-field w-full font-mono dark:bg-zinc-900 dark:text-white"
+            placeholder="0.000"
+            value={tempVolume}
+            onChange={(e) => setTempVolume(e.target.value)}
+            onBlur={(e) => handleBlur('volume', e.target.value)}
+          />
+          {selectedInv && (
+            <p className="text-[9px] text-zinc-400 mt-1">Stok: {selectedInv.total_volume.toFixed(3)} m³</p>
+          )}
+        </div>
+      )}
+      <div className={isX ? "md:col-span-3" : "md:col-span-2"}>
         <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">
           {isX ? 'Harga Jual / Batang' : 'Harga Jual / m³'}
         </label>
@@ -353,8 +354,9 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
     }
 
     for (const item of saleItems) {
-      if (!item.wood_type || !item.volume || !item.sale_price_per_m3 || !item.condition) {
-        alert('Mohon lengkapi detail item (Jenis Kayu, Kondisi, Volume, Harga).');
+      const isX = item.condition === 'X' || item.diameter_group === 'X' || item.diameter_group === '<10';
+      if (!item.wood_type || (!isX && !item.volume) || !item.sale_price_per_m3 || !item.condition) {
+        alert('Mohon lengkapi detail item (Jenis Kayu, Kondisi, Volume/Batang, Harga).');
         return;
       }
 
@@ -364,7 +366,7 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
         i.length === Number(item.length) &&
         i.condition_val === item.condition
       );
-      if (!inv || inv.total_volume < item.volume) {
+      if (!inv || (!isX && inv.total_volume < item.volume) || (isX && inv.total_logs < item.total_logs)) {
         alert(`Stok tidak mencukupi untuk ${item.wood_type} ${item.diameter_group} L=${item.length} (${item.condition})`);
         return;
       }
@@ -709,8 +711,8 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
                     <thead>
                       <tr className="border-b-2 border-zinc-900">
                         <th className="py-3 text-[10px] font-bold text-zinc-900 uppercase tracking-widest">Item / Jenis Kayu</th>
-                        <th className="py-3 text-[10px] font-bold text-zinc-900 uppercase tracking-widest text-center">Volume</th>
-                        <th className="py-3 text-[10px] font-bold text-zinc-900 uppercase tracking-widest text-right">Harga/m³</th>
+                        <th className="py-3 text-[10px] font-bold text-zinc-900 uppercase tracking-widest text-center">Vol/Btg</th>
+                        <th className="py-3 text-[10px] font-bold text-zinc-900 uppercase tracking-widest text-right">Harga/Satuan</th>
                         <th className="py-3 text-[10px] font-bold text-zinc-900 uppercase tracking-widest text-right">Subtotal</th>
                       </tr>
                     </thead>
@@ -726,7 +728,9 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
                             <p className="font-bold text-zinc-900">{item.wood_type}</p>
                             <p className="text-xs text-zinc-500">D: {item.diameter_group} | P: {item.length} cm | {item.condition}</p>
                           </td>
-                          <td className="py-4 text-center font-mono font-bold">{item.volume.toFixed(3)} m³</td>
+                          <td className="py-4 text-center font-mono font-bold">
+                            {(item.condition === 'X' || item.diameter_group === 'X' || item.diameter_group === '<10') ? `${item.total_logs} Btg` : `${item.volume.toFixed(3)} m³`}
+                          </td>
                           <td className="py-4 text-right font-mono">{formatCurrency(item.sale_price_per_m3)}</td>
                           <td className="py-4 text-right font-bold text-zinc-900">{formatCurrency(item.subtotal_revenue || (item.volume * item.sale_price_per_m3))}</td>
                         </tr>
