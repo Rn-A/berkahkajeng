@@ -32,8 +32,14 @@ export default function ProfileView({ auth, onUpdateAuth }: ProfileViewProps) {
       if (formData.new_password !== formData.confirm_password) {
         return setMessage({ type: 'error', text: 'Konfirmasi password baru tidak cocok.' });
       }
-      if (formData.new_password.length < 6) {
-        return setMessage({ type: 'error', text: 'Password baru minimal 6 karakter.' });
+      if (formData.new_password.length < 8) {
+        return setMessage({ type: 'error', text: 'Password baru minimal 8 karakter.' });
+      }
+      if (!/[A-Z]/.test(formData.new_password) ||
+          !/[a-z]/.test(formData.new_password) ||
+          !/[0-9]/.test(formData.new_password) ||
+          !/[!@#$%^&*]/.test(formData.new_password)) {
+        return setMessage({ type: 'error', text: 'Password harus mengandung huruf besar, huruf kecil, angka, dan simbol (!@#$%^&*).' });
       }
     }
 
@@ -177,7 +183,7 @@ export default function ProfileView({ auth, onUpdateAuth }: ProfileViewProps) {
                     value={formData.new_password}
                     onChange={e => setFormData({...formData, new_password: e.target.value})}
                     className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-green-500 dark:text-white outline-none transition-all"
-                    placeholder="Minimal 6 karakter"
+                    placeholder="Min 8 karakter, huruf, angka & simbol"
                   />
                 </div>
 

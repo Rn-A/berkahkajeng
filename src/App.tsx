@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   LayoutDashboard,
   Truck,
@@ -18,38 +18,69 @@ import {
   Sun,
   CheckCircle2,
   Info,
-  XCircle
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { WoodSet, InventoryItem, Sale, DashboardData, User, AuthState, Supplier, Customer, Expense, AuditLog } from './types';
+  XCircle,
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  WoodSet,
+  InventoryItem,
+  Sale,
+  DashboardData,
+  User,
+  AuthState,
+  Supplier,
+  Customer,
+  Expense,
+  AuditLog,
+} from "./types";
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
   React.lazy(async () => {
     try {
       return await componentImport();
     } catch (error) {
-      console.error('Chunk load error, refreshing...', error);
+      console.error("Chunk load error, refreshing...", error);
       window.location.reload();
       return { default: () => null };
     }
   });
 
-const DashboardView = lazyWithRetry(() => import('./components/DashboardView'));
-const PurchaseView = lazyWithRetry(() => import('./components/PurchaseView'));
-const InventoryView = lazyWithRetry(() => import('./components/InventoryView'));
-const SalesView = lazyWithRetry(() => import('./components/SalesView'));
-const ReportsView = lazyWithRetry(() => import('./components/ReportsView'));
-const SuppliersView = lazyWithRetry(() => import('./components/SuppliersView'));
-const CustomersView = lazyWithRetry(() => import('./components/CustomersView'));
-const ExpensesView = lazyWithRetry(() => import('./components/ExpensesView'));
-const AuditLogsView = lazyWithRetry(() => import('./components/AuditLogsView.tsx'));
-const UserManagementView = lazyWithRetry(() => import('./components/UserManagementView'));
-const ProfileView = lazyWithRetry(() => import('./components/ProfileView'));
-const Login = lazyWithRetry(() => import('./components/Login'));
-const ForgotPasswordView = lazyWithRetry(() => import('./components/ForgotPasswordView'));
-const ConfirmationModal = lazyWithRetry(() => import('./components/ConfirmationModal'));
-import { cn } from './lib/utils';
+const DashboardView = lazyWithRetry(() => import("./components/DashboardView"));
+const PurchaseView = lazyWithRetry(() => import("./components/PurchaseView"));
+const InventoryView = lazyWithRetry(() => import("./components/InventoryView"));
+const SalesView = lazyWithRetry(() => import("./components/SalesView"));
+const ReportsView = lazyWithRetry(() => import("./components/ReportsView"));
+const SuppliersView = lazyWithRetry(() => import("./components/SuppliersView"));
+const CustomersView = lazyWithRetry(() => import("./components/CustomersView"));
+const ExpensesView = lazyWithRetry(() => import("./components/ExpensesView"));
+const AuditLogsView = lazyWithRetry(
+  () => import("./components/AuditLogsView.tsx"),
+);
+const UserManagementView = lazyWithRetry(
+  () => import("./components/UserManagementView"),
+);
+const ProfileView = lazyWithRetry(() => import("./components/ProfileView"));
+const Login = lazyWithRetry(() => import("./components/Login"));
+const ForgotPasswordView = lazyWithRetry(
+  () => import("./components/ForgotPasswordView"),
+);
+const ConfirmationModal = lazyWithRetry(
+  () => import("./components/ConfirmationModal"),
+);
+import { cn } from "./lib/utils";
 
-type ViewType = 'dashboard' | 'purchase' | 'inventory' | 'sales' | 'reports' | 'suppliers' | 'customers' | 'expenses' | 'audit-logs' | 'users' | 'profile' | 'forgot-password';
+type ViewType =
+  | "dashboard"
+  | "purchase"
+  | "inventory"
+  | "sales"
+  | "reports"
+  | "suppliers"
+  | "customers"
+  | "expenses"
+  | "audit-logs"
+  | "users"
+  | "profile"
+  | "forgot-password";
 
 const ViewSkeleton = () => (
   <div className="space-y-6 animate-pulse">
@@ -61,8 +92,11 @@ const ViewSkeleton = () => (
       <div className="h-10 w-32 bg-zinc-200 dark:bg-zinc-800 rounded-xl"></div>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {[1, 2, 3].map(i => (
-        <div key={i} className="h-32 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm"></div>
+      {[1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="h-32 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm"
+        ></div>
       ))}
     </div>
     <div className="h-96 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm"></div>
@@ -72,8 +106,11 @@ const ViewSkeleton = () => (
 const DashboardSkeleton = () => (
   <div className="space-y-8 animate-pulse">
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {[1, 2, 3, 4].map(i => (
-        <div key={i} className="h-24 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm"></div>
+      {[1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          className="h-24 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm"
+        ></div>
       ))}
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -84,14 +121,16 @@ const DashboardSkeleton = () => (
 );
 
 export default function App() {
-  const [activeView, setActiveView] = useState<ViewType>('dashboard');
+  const [activeView, setActiveView] = useState<ViewType>("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('logyard_theme') === 'dark');
+  const [isDarkMode, setIsDarkMode] = useState(
+    () => localStorage.getItem("logyard_theme") === "dark",
+  );
 
   // Auth state
   const [auth, setAuth] = useState<AuthState>(() => {
-    const saved = localStorage.getItem('logyard_auth');
+    const saved = localStorage.getItem("logyard_auth");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -112,7 +151,9 @@ export default function App() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
+    null,
+  );
   const [woodTypes, setWoodTypes] = useState<{ name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -123,230 +164,300 @@ export default function App() {
     isOpen: boolean;
     title: string;
     message: string;
-    variant: 'danger' | 'warning' | 'info';
+    variant: "danger" | "warning" | "info";
     onConfirm: () => void;
   }>({
     isOpen: false,
-    title: '',
-    message: '',
-    variant: 'info',
-    onConfirm: () => { }
+    title: "",
+    message: "",
+    variant: "info",
+    onConfirm: () => {},
   });
 
-  const [toast, setToast] = useState<{ isOpen: boolean, message: string, type: 'success' | 'info' | 'error' }>({
+  const [toast, setToast] = useState<{
+    isOpen: boolean;
+    message: string;
+    type: "success" | "info" | "error";
+  }>({
     isOpen: false,
-    message: '',
-    type: 'success'
+    message: "",
+    type: "success",
   });
 
-  const showToast = useCallback((message: string, type: 'success' | 'info' | 'error' = 'success') => {
-    setToast({ isOpen: true, message, type });
-    setTimeout(() => setToast(prev => ({ ...prev, isOpen: false })), 3000);
-  }, []);
+  const showToast = useCallback(
+    (message: string, type: "success" | "info" | "error" = "success") => {
+      setToast({ isOpen: true, message, type });
+      setTimeout(() => setToast((prev) => ({ ...prev, isOpen: false })), 3000);
+    },
+    [],
+  );
 
   // Password Reset State
-  const [resetData, setResetData] = useState<{ email: string; token: string } | null>(null);
+  const [resetData, setResetData] = useState<{
+    email: string;
+    token: string;
+  } | null>(null);
 
   useEffect(() => {
     if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('logyard_theme', 'dark');
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("logyard_theme", "dark");
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('logyard_theme', 'light');
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("logyard_theme", "light");
     }
   }, [isDarkMode]);
 
   const handleLogout = useCallback(() => {
+    if (auth.user?.token) {
+      fetch("/api/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${auth.user.token}` }
+      }).catch(console.error);
+    }
     setAuth({ user: null, isAuthenticated: false });
-    localStorage.removeItem('logyard_auth');
-    setActiveView('dashboard');
-  }, []);
+    localStorage.removeItem("logyard_auth");
+    setActiveView("dashboard");
+  }, [auth.user?.token]);
 
   const createNewSet = useCallback(() => {
     const newSet: WoodSet = {
       id: crypto.randomUUID(),
-      supplierName: '',
+      supplierName: "",
       date: (() => {
         const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       })(),
       categories: [],
       total_volume: 0,
-      total_value: 0
+      total_value: 0,
     };
     setActiveSet(newSet);
   }, []);
 
-  const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
-    const token = auth.user?.token;
-    const headers = {
-      ...options.headers,
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    };
-    return fetch(url, { ...options, headers });
-  }, [auth.user?.token]);
+  const fetchWithAuth = useCallback(
+    async (url: string, options: RequestInit = {}) => {
+      const token = auth.user?.token;
+      const headers = {
+        ...options.headers,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      };
+
+      // FIX #9: Add request timeout (30 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      try {
+        const response = await fetch(url, {
+          ...options,
+          headers,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        return response;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
+    },
+    [auth.user?.token],
+  );
 
   const isFetchingRef = React.useRef(false);
-  const fetchData = useCallback(async (viewArg?: ViewType) => {
-    if (!viewArg || isFetchingRef.current) return;
-    
-    isFetchingRef.current = true;
-    const view = viewArg;
-    
-    try {
-      if (view === 'dashboard') {
-        const [dashR, invR, salesR, purchR, expR] = await Promise.all([
-          fetchWithAuth('/api/dashboard'),
-          fetchWithAuth('/api/inventory'),
-          fetchWithAuth('/api/sales'),
-          fetchWithAuth('/api/sets'),
-          fetchWithAuth('/api/expenses')
-        ]);
+  const fetchData = useCallback(
+    async (viewArg?: ViewType) => {
+      if (!viewArg || isFetchingRef.current) return;
 
-        if (dashR?.ok) setDashboardData(await dashR.json());
-        if (invR?.ok) setInventory(await invR.json());
-        if (salesR?.ok) setSalesHistory(await salesR.json());
-        if (purchR?.ok) setHistory(await purchR.json());
-        if (expR?.ok) setExpenses(await expR.json());
+      isFetchingRef.current = true;
+      const view = viewArg;
 
-        if (dashR?.status === 401 || dashR?.status === 403) {
-          handleLogout();
-        }
-      } else {
-        // Handle other views
-        switch(view) {
-          case 'purchase':
-            const [setsR, suppR, woodR] = await Promise.all([
-              fetchWithAuth('/api/sets'),
-              fetchWithAuth('/api/suppliers'),
-              fetchWithAuth('/api/wood-types')
-            ]);
-            if (setsR?.ok) setHistory(await setsR.json());
-            if (suppR?.ok) setSuppliers(await suppR.json());
-            if (woodR?.ok) setWoodTypes(await woodR.json());
-            break;
-          case 'inventory':
-            const invR = await fetchWithAuth('/api/inventory');
-            if (invR?.ok) setInventory(await invR.json());
-            break;
-          case 'sales':
-            const [sR, cR, iR] = await Promise.all([
-              fetchWithAuth('/api/sales'),
-              fetchWithAuth('/api/customers'),
-              fetchWithAuth('/api/inventory')
-            ]);
-            if (sR?.ok) setSalesHistory(await sR.json());
-            if (cR?.ok) setCustomers(await cR.json());
-            if (iR?.ok) setInventory(await iR.json());
-            break;
-          case 'expenses':
-            const exR = await fetchWithAuth('/api/expenses');
-            if (exR?.ok) setExpenses(await exR.json());
-            break;
-          case 'reports':
-            const [repSalesR, repPurchR, repExpR, repInvR] = await Promise.all([
-              fetchWithAuth('/api/sales'),
-              fetchWithAuth('/api/sets'),
-              fetchWithAuth('/api/expenses'),
-              fetchWithAuth('/api/inventory'),
-            ]);
-            if (repSalesR?.ok) setSalesHistory(await repSalesR.json());
-            if (repPurchR?.ok) setHistory(await repPurchR.json());
-            if (repExpR?.ok) setExpenses(await repExpR.json());
-            if (repInvR?.ok) setInventory(await repInvR.json());
-            break;
-          case 'suppliers':
-            const spR = await fetchWithAuth('/api/suppliers');
-            if (spR?.ok) setSuppliers(await spR.json());
-            break;
-          case 'customers':
-            const csR = await fetchWithAuth('/api/customers');
-            if (csR?.ok) setCustomers(await csR.json());
-            break;
-          case 'audit-logs':
-            if (auth.user?.role === 'owner') {
-              const auR = await fetchWithAuth('/api/audit-logs');
-              if (auR?.ok) setAuditLogs(await auR.json());
+      try {
+        if (view === "dashboard") {
+          // FIX #10: Use Promise.allSettled instead of Promise.all for better error handling
+          const results = await Promise.allSettled([
+            fetchWithAuth("/api/dashboard"),
+            fetchWithAuth("/api/inventory"),
+            fetchWithAuth("/api/sales"),
+            fetchWithAuth("/api/sets"),
+            fetchWithAuth("/api/expenses"),
+          ]);
+
+          // Process results safely
+          if (results[0].status === "fulfilled" && results[0].value?.ok) {
+            setDashboardData(await results[0].value.json());
+          }
+          if (results[1].status === "fulfilled" && results[1].value?.ok) {
+            setInventory(await results[1].value.json());
+          }
+          if (results[2].status === "fulfilled" && results[2].value?.ok) {
+            setSalesHistory(await results[2].value.json());
+          }
+          if (results[3].status === "fulfilled" && results[3].value?.ok) {
+            setHistory(await results[3].value.json());
+          }
+          if (results[4].status === "fulfilled" && results[4].value?.ok) {
+            setExpenses(await results[4].value.json());
+          }
+
+          // Check for auth errors
+          if (
+            results[0].status === "fulfilled" &&
+            (results[0].value?.status === 401 ||
+              results[0].value?.status === 403)
+          ) {
+            handleLogout();
+          }
+        } else {
+          // Handle other views with proper error handling
+          switch (view) {
+            case "purchase": {
+              const res = await Promise.allSettled([
+                fetchWithAuth("/api/sets"),
+                fetchWithAuth("/api/suppliers"),
+                fetchWithAuth("/api/wood-types"),
+              ]);
+              if (res[0].status === "fulfilled" && res[0].value?.ok)
+                setHistory(await res[0].value.json());
+              if (res[1].status === "fulfilled" && res[1].value?.ok)
+                setSuppliers(await res[1].value.json());
+              if (res[2].status === "fulfilled" && res[2].value?.ok)
+                setWoodTypes(await res[2].value.json());
+              break;
             }
-            break;
+            case "inventory": {
+              const res = await fetchWithAuth("/api/inventory");
+              if (res?.ok) setInventory(await res.json());
+              break;
+            }
+            case "sales": {
+              const res = await Promise.allSettled([
+                fetchWithAuth("/api/sales"),
+                fetchWithAuth("/api/customers"),
+                fetchWithAuth("/api/inventory"),
+              ]);
+              if (res[0].status === "fulfilled" && res[0].value?.ok)
+                setSalesHistory(await res[0].value.json());
+              if (res[1].status === "fulfilled" && res[1].value?.ok)
+                setCustomers(await res[1].value.json());
+              if (res[2].status === "fulfilled" && res[2].value?.ok)
+                setInventory(await res[2].value.json());
+              break;
+            }
+            case "expenses": {
+              const res = await fetchWithAuth("/api/expenses");
+              if (res?.ok) setExpenses(await res.json());
+              break;
+            }
+            case "reports": {
+              const res = await Promise.allSettled([
+                fetchWithAuth("/api/sales"),
+                fetchWithAuth("/api/sets"),
+                fetchWithAuth("/api/expenses"),
+                fetchWithAuth("/api/inventory"),
+              ]);
+              if (res[0].status === "fulfilled" && res[0].value?.ok)
+                setSalesHistory(await res[0].value.json());
+              if (res[1].status === "fulfilled" && res[1].value?.ok)
+                setHistory(await res[1].value.json());
+              if (res[2].status === "fulfilled" && res[2].value?.ok)
+                setExpenses(await res[2].value.json());
+              if (res[3].status === "fulfilled" && res[3].value?.ok)
+                setInventory(await res[3].value.json());
+              break;
+            }
+            case "suppliers": {
+              const res = await fetchWithAuth("/api/suppliers");
+              if (res?.ok) setSuppliers(await res.json());
+              break;
+            }
+            case "customers": {
+              const res = await fetchWithAuth("/api/customers");
+              if (res?.ok) setCustomers(await res.json());
+              break;
+            }
+            case "audit-logs": {
+              if (auth.user?.role === "owner") {
+                const res = await fetchWithAuth("/api/audit-logs");
+                if (res?.ok) setAuditLogs(await res.json());
+              }
+              break;
+            }
+          }
         }
+      } catch (error) {
+        console.error("Fetch error:", error);
+        showToast("Gagal memuat data. Silakan coba lagi.", "error");
+      } finally {
+        setIsInitialLoad(false);
+        setIsLoading(false);
+        isFetchingRef.current = false;
       }
-    } catch (error) {
-      console.error("Fetch error:", error);
-    } finally {
-      setIsInitialLoad(false);
-      setIsLoading(false);
-      isFetchingRef.current = false;
-    }
-  }, [fetchWithAuth, auth.user?.role, handleLogout]);
+    },
+    [fetchWithAuth, auth.user?.role, handleLogout, showToast],
+  );
 
-  const lastFetchedView = React.useRef<string | null>(null);
   useEffect(() => {
-    if (auth.isAuthenticated && lastFetchedView.current !== activeView) {
-      lastFetchedView.current = activeView;
+    if (auth.isAuthenticated) {
       fetchData(activeView);
     }
   }, [auth.isAuthenticated, activeView]);
 
   useEffect(() => {
-    if (auth.isAuthenticated && activeView === 'purchase' && !activeSet) {
+    if (auth.isAuthenticated && activeView === "purchase" && !activeSet) {
       createNewSet();
     }
   }, [auth.isAuthenticated, activeView, activeSet, createNewSet]);
 
   const handleLogin = async (credentials: any) => {
     try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials)
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
       });
 
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
-        console.error('Non-JSON response received:', text.substring(0, 100));
-        throw new Error('Server returned an invalid response (not JSON). Please check if the server is running correctly.');
+        console.error("Non-JSON response received:", text.substring(0, 100));
+        throw new Error(
+          "Server returned an invalid response (not JSON). Please check if the server is running correctly.",
+        );
       }
 
       const data = await response.json();
       if (response.ok) {
         setAuth({ user: data, isAuthenticated: true });
-        localStorage.setItem('logyard_auth', JSON.stringify(data));
+        localStorage.setItem("logyard_auth", JSON.stringify(data));
       } else {
-        throw new Error(data.error || 'Login gagal');
+        throw new Error(data.error || "Login gagal");
       }
     } catch (err: any) {
-      console.error('Login error:', err);
+      console.error("Login error:", err);
       throw err;
     }
   };
-
-
 
   const handleSaveSet = async (setOverride?: any) => {
     const setToSave = setOverride || activeSet;
     if (!setToSave || setToSave.categories.length === 0) return;
     setIsSaving(true);
-    
-    // Optimistic UI: Reset form immediately
-    createNewSet();
-    showToast('Tersimpan! Memproses di latar belakang...', 'success');
 
     try {
-      const response = await fetchWithAuth('/api/sets', {
-        method: 'POST',
-        body: JSON.stringify(setToSave)
+      const response = await fetchWithAuth("/api/sets", {
+        method: "POST",
+        body: JSON.stringify(setToSave),
       });
       if (response.ok) {
-        fetchData(activeView); // Silently update history and dashboard
+        createNewSet();
+        showToast("Tersimpan!", "success");
+        fetchData(activeView);
       } else {
-        showToast('Gagal menyimpan ke database!', 'error');
+        showToast("Gagal menyimpan ke database!", "error");
       }
     } catch (error) {
-      showToast('Gagal menghubungi server.', 'error');
+      showToast("Gagal menghubungi server.", "error");
     } finally {
       setIsSaving(false);
     }
@@ -355,33 +466,36 @@ export default function App() {
   const handleDeleteSet = async (id: string) => {
     setModalConfig({
       isOpen: true,
-      title: 'Hapus Riwayat Pembelian',
-      message: 'Apakah Anda yakin ingin menghapus riwayat pembelian ini? Stok yang terkait akan dikembalikan.',
-      variant: 'danger',
+      title: "Hapus Riwayat Pembelian",
+      message:
+        "Apakah Anda yakin ingin menghapus riwayat pembelian ini? Stok yang terkait akan dikembalikan.",
+      variant: "danger",
       onConfirm: async () => {
         try {
-          const response = await fetchWithAuth(`/api/sets/${id}`, { method: 'DELETE' });
+          const response = await fetchWithAuth(`/api/sets/${id}`, {
+            method: "DELETE",
+          });
           if (response.ok) await fetchData(activeView);
         } catch (error) {
-          alert('Gagal menghapus.');
+          alert("Gagal menghapus.");
         }
-      }
+      },
     });
   };
 
   const handleSaveSale = async (sale: any) => {
     try {
-      const response = await fetchWithAuth('/api/sales', {
-        method: 'POST',
-        body: JSON.stringify(sale)
+      const response = await fetchWithAuth("/api/sales", {
+        method: "POST",
+        body: JSON.stringify(sale),
       });
       if (response.ok) {
-        showToast('Penjualan berhasil dicatat!', 'success');
+        showToast("Penjualan berhasil dicatat!", "success");
         // Fetch data di background
         fetchData(activeView);
       } else {
         const err = await response.json();
-        showToast('Gagal: ' + err.error, 'error');
+        showToast("Gagal: " + err.error, "error");
         throw new Error(err.error);
       }
     } catch (error) {
@@ -393,24 +507,27 @@ export default function App() {
   const handleDeleteSale = async (id: string) => {
     setModalConfig({
       isOpen: true,
-      title: 'Hapus Riwayat Penjualan',
-      message: 'Apakah Anda yakin ingin menghapus riwayat penjualan ini? Stok akan dikembalikan.',
-      variant: 'danger',
+      title: "Hapus Riwayat Penjualan",
+      message:
+        "Apakah Anda yakin ingin menghapus riwayat penjualan ini? Stok akan dikembalikan.",
+      variant: "danger",
       onConfirm: async () => {
         try {
-          const response = await fetchWithAuth(`/api/sales/${id}`, { method: 'DELETE' });
+          const response = await fetchWithAuth(`/api/sales/${id}`, {
+            method: "DELETE",
+          });
           if (response.ok) await fetchData(activeView);
         } catch (error) {
-          alert('Gagal menghapus.');
+          alert("Gagal menghapus.");
         }
-      }
+      },
     });
   };
 
   const handleSaveSupplier = async (supplier: any) => {
-    const response = await fetchWithAuth('/api/suppliers', {
-      method: 'POST',
-      body: JSON.stringify(supplier)
+    const response = await fetchWithAuth("/api/suppliers", {
+      method: "POST",
+      body: JSON.stringify(supplier),
     });
     if (response.ok) await fetchData(activeView);
   };
@@ -418,24 +535,26 @@ export default function App() {
   const handleDeleteSupplier = async (id: string) => {
     setModalConfig({
       isOpen: true,
-      title: 'Hapus Supplier',
-      message: 'Apakah Anda yakin ingin menghapus data supplier ini?',
-      variant: 'danger',
+      title: "Hapus Supplier",
+      message: "Apakah Anda yakin ingin menghapus data supplier ini?",
+      variant: "danger",
       onConfirm: async () => {
         try {
-          const response = await fetchWithAuth(`/api/suppliers/${id}`, { method: 'DELETE' });
+          const response = await fetchWithAuth(`/api/suppliers/${id}`, {
+            method: "DELETE",
+          });
           if (response.ok) await fetchData(activeView);
         } catch (error) {
-          alert('Gagal menghapus supplier.');
+          alert("Gagal menghapus supplier.");
         }
-      }
+      },
     });
   };
 
   const handleSaveCustomer = async (customer: any) => {
-    const response = await fetchWithAuth('/api/customers', {
-      method: 'POST',
-      body: JSON.stringify(customer)
+    const response = await fetchWithAuth("/api/customers", {
+      method: "POST",
+      body: JSON.stringify(customer),
     });
     if (response.ok) await fetchData(activeView);
   };
@@ -443,28 +562,30 @@ export default function App() {
   const handleDeleteCustomer = async (id: string) => {
     setModalConfig({
       isOpen: true,
-      title: 'Hapus Pelanggan',
-      message: 'Apakah Anda yakin ingin menghapus data pelanggan ini?',
-      variant: 'danger',
+      title: "Hapus Pelanggan",
+      message: "Apakah Anda yakin ingin menghapus data pelanggan ini?",
+      variant: "danger",
       onConfirm: async () => {
         try {
-          const response = await fetchWithAuth(`/api/customers/${id}`, { method: 'DELETE' });
+          const response = await fetchWithAuth(`/api/customers/${id}`, {
+            method: "DELETE",
+          });
           if (response.ok) await fetchData(activeView);
         } catch (error) {
-          alert('Gagal menghapus pelanggan.');
+          alert("Gagal menghapus pelanggan.");
         }
-      }
+      },
     });
   };
 
   const handleSaveExpense = async (expense: any) => {
-    const isUpdate = expense.id && expenses.some(e => e.id === expense.id);
-    const url = isUpdate ? `/api/expenses/${expense.id}` : '/api/expenses';
-    const method = isUpdate ? 'PUT' : 'POST';
+    const isUpdate = expense.id && expenses.some((e) => e.id === expense.id);
+    const url = isUpdate ? `/api/expenses/${expense.id}` : "/api/expenses";
+    const method = isUpdate ? "PUT" : "POST";
 
     const response = await fetchWithAuth(url, {
       method,
-      body: JSON.stringify(expense)
+      body: JSON.stringify(expense),
     });
     if (response.ok) await fetchData(activeView);
   };
@@ -472,109 +593,167 @@ export default function App() {
   const handleDeleteExpense = async (id: string) => {
     setModalConfig({
       isOpen: true,
-      title: 'Hapus Pengeluaran',
-      message: 'Apakah Anda yakin ingin menghapus catatan pengeluaran ini?',
-      variant: 'danger',
+      title: "Hapus Pengeluaran",
+      message: "Apakah Anda yakin ingin menghapus catatan pengeluaran ini?",
+      variant: "danger",
       onConfirm: async () => {
         try {
-          const response = await fetchWithAuth(`/api/expenses/${id}`, { method: 'DELETE' });
+          const response = await fetchWithAuth(`/api/expenses/${id}`, {
+            method: "DELETE",
+          });
           if (response.ok) await fetchData(activeView);
         } catch (error) {
-          alert('Gagal menghapus pengeluaran.');
+          alert("Gagal menghapus pengeluaran.");
         }
-      }
+      },
     });
   };
 
   const handleAddWoodType = async (name: string) => {
     try {
-      const res = await fetchWithAuth('/api/wood-types', {
-        method: 'POST',
-        body: JSON.stringify({ name })
+      const res = await fetchWithAuth("/api/wood-types", {
+        method: "POST",
+        body: JSON.stringify({ name }),
       });
       if (res.ok) await fetchData(activeView);
     } catch (e) {
-      alert('Gagal menambah jenis kayu');
+      alert("Gagal menambah jenis kayu");
     }
   };
 
   const handleDeleteWoodType = async (name: string) => {
     setModalConfig({
       isOpen: true,
-      title: 'Hapus Jenis Kayu',
+      title: "Hapus Jenis Kayu",
       message: `Apakah Anda yakin ingin menghapus jenis kayu "${name}"? Ini tidak akan menghapus data stok lama tapi akan menghilangkannya dari opsi input baru.`,
-      variant: 'danger',
+      variant: "danger",
       onConfirm: async () => {
         try {
-          const res = await fetchWithAuth(`/api/wood-types/${name}`, { method: 'DELETE' });
+          const res = await fetchWithAuth(`/api/wood-types/${name}`, {
+            method: "DELETE",
+          });
           if (res.ok) await fetchData(activeView);
         } catch (e) {
-          alert('Gagal menghapus');
+          alert("Gagal menghapus");
         }
-      }
+      },
     });
   };
 
   const handleDeleteUser = async (id: number, username: string) => {
     setModalConfig({
       isOpen: true,
-      title: 'Hapus Akun Mandor',
+      title: "Hapus Akun Mandor",
       message: `Apakah Anda yakin ingin menghapus akun mandor "${username}" secara permanen?`,
-      variant: 'danger',
+      variant: "danger",
       onConfirm: async () => {
         try {
-          const res = await fetchWithAuth(`/api/users/${id}`, { method: 'DELETE' });
+          const res = await fetchWithAuth(`/api/users/${id}`, {
+            method: "DELETE",
+          });
           if (res.ok) await fetchData(activeView);
-          else alert('Gagal menghapus');
+          else alert("Gagal menghapus");
         } catch (e) {
-          alert('Terjadi kesalahan jaringan.');
+          alert("Terjadi kesalahan jaringan.");
         }
-      }
+      },
     });
   };
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['owner', 'mandor'] },
-    { id: 'purchase', label: 'Pembelian (Set)', icon: Truck, roles: ['owner', 'mandor'] },
-    { id: 'inventory', label: 'Inventaris', icon: Package, roles: ['owner', 'mandor'] },
-    { id: 'sales', label: 'Penjualan', icon: ShoppingCart, roles: ['owner', 'mandor'] },
-    { id: 'expenses', label: 'Pengeluaran', icon: CreditCard, roles: ['owner'] },
-    { id: 'suppliers', label: 'Supplier', icon: Users, roles: ['owner', 'mandor'] },
-    { id: 'customers', label: 'Pelanggan', icon: UserCheck, roles: ['owner', 'mandor'] },
-    { id: 'reports', label: 'Laporan', icon: FileText, roles: ['owner'] },
-    { id: 'users', label: 'Akun Mandor', icon: UserPlus, roles: ['owner'] },
-    { id: 'audit-logs', label: 'Audit Log', icon: ShieldAlert, roles: ['owner'] },
-    { id: 'profile', label: 'Profil Saya', icon: UserIcon, roles: ['owner', 'mandor'] },
-  ].filter(item => item.roles.includes(auth.user?.role || ''));
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      roles: ["owner", "mandor"],
+    },
+    {
+      id: "purchase",
+      label: "Pembelian (Set)",
+      icon: Truck,
+      roles: ["owner", "mandor"],
+    },
+    {
+      id: "inventory",
+      label: "Inventaris",
+      icon: Package,
+      roles: ["owner", "mandor"],
+    },
+    {
+      id: "sales",
+      label: "Penjualan",
+      icon: ShoppingCart,
+      roles: ["owner", "mandor"],
+    },
+    {
+      id: "expenses",
+      label: "Pengeluaran",
+      icon: CreditCard,
+      roles: ["owner"],
+    },
+    {
+      id: "suppliers",
+      label: "Supplier",
+      icon: Users,
+      roles: ["owner", "mandor"],
+    },
+    {
+      id: "customers",
+      label: "Pelanggan",
+      icon: UserCheck,
+      roles: ["owner", "mandor"],
+    },
+    { id: "reports", label: "Laporan", icon: FileText, roles: ["owner"] },
+    { id: "users", label: "Akun Mandor", icon: UserPlus, roles: ["owner"] },
+    {
+      id: "audit-logs",
+      label: "Audit Log",
+      icon: ShieldAlert,
+      roles: ["owner"],
+    },
+    {
+      id: "profile",
+      label: "Profil Saya",
+      icon: UserIcon,
+      roles: ["owner", "mandor"],
+    },
+  ].filter((item) => item.roles.includes(auth.user?.role || ""));
 
   if (!auth.isAuthenticated) {
     return (
-      <React.Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-white rounded-full animate-spin"></div>
-            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest animate-pulse">Menyiapkan Akses...</p>
+      <React.Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-white rounded-full animate-spin"></div>
+              <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest animate-pulse">
+                Menyiapkan Akses...
+              </p>
+            </div>
           </div>
-        </div>
-      }>
-        {activeView === 'forgot-password' ? (
-          <ForgotPasswordView onBack={() => setActiveView('dashboard')} />
+        }
+      >
+        {activeView === "forgot-password" ? (
+          <ForgotPasswordView onBack={() => setActiveView("dashboard")} />
         ) : (
-          <Login onLogin={handleLogin} onForgotPassword={() => setActiveView('forgot-password')} />
+          <Login
+            onLogin={handleLogin}
+            onForgotPassword={() => setActiveView("forgot-password")}
+          />
         )}
       </React.Suspense>
     );
   }
 
-
-
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased">
       {/* Desktop Sidebar */}
-      <aside className={cn(
-        "hidden md:flex bg-zinc-900 text-white transition-all duration-300 flex-col sticky top-0 h-screen z-40 print:hidden",
-        isSidebarOpen ? "w-64" : "w-20"
-      )}>
+      <aside
+        className={cn(
+          "hidden md:flex bg-zinc-900 text-white transition-all duration-300 flex-col sticky top-0 h-screen z-40 print:hidden",
+          isSidebarOpen ? "w-64" : "w-20",
+        )}
+      >
         <div className="p-4 flex items-center gap-3 border-b border-white/10">
           <img
             src="/logo.png"
@@ -585,8 +764,12 @@ export default function App() {
           />
           {isSidebarOpen && (
             <div className="overflow-hidden whitespace-nowrap">
-              <h1 className="font-bold text-lg tracking-tight">Berkah Kajeng</h1>
-              <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Management System</p>
+              <h1 className="font-bold text-lg tracking-tight">
+                Berkah Kajeng
+              </h1>
+              <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">
+                Management System
+              </p>
             </div>
           )}
         </div>
@@ -600,14 +783,21 @@ export default function App() {
                 "w-full flex items-center gap-3 p-3 rounded-xl transition-all group",
                 activeView === item.id
                   ? "bg-white text-zinc-900 shadow-lg shadow-black/20"
-                  : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                  : "text-zinc-400 hover:bg-white/5 hover:text-white",
               )}
             >
-              <item.icon size={22} className={cn(
-                "shrink-0",
-                activeView === item.id ? "text-zinc-900" : "group-hover:scale-110 transition-transform"
-              )} />
-              {isSidebarOpen && <span className="font-medium">{item.label}</span>}
+              <item.icon
+                size={22}
+                className={cn(
+                  "shrink-0",
+                  activeView === item.id
+                    ? "text-zinc-900"
+                    : "group-hover:scale-110 transition-transform",
+                )}
+              />
+              {isSidebarOpen && (
+                <span className="font-medium">{item.label}</span>
+              )}
             </button>
           ))}
         </nav>
@@ -618,7 +808,11 @@ export default function App() {
             className="w-full flex items-center gap-3 p-3 text-zinc-400 hover:text-white transition-colors rounded-xl mb-2"
           >
             {isDarkMode ? <Sun size={22} /> : <Moon size={22} />}
-            {isSidebarOpen && <span className="font-medium">{isDarkMode ? 'Mode Terang' : 'Mode Gelap'}</span>}
+            {isSidebarOpen && (
+              <span className="font-medium">
+                {isDarkMode ? "Mode Terang" : "Mode Gelap"}
+              </span>
+            )}
           </button>
           <button
             onClick={handleLogout}
@@ -650,16 +844,28 @@ export default function App() {
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="Berkah Kajeng" width="32" height="32" className="h-8 w-8 object-contain" />
+            <img
+              src="/logo.png"
+              alt="Berkah Kajeng"
+              width="32"
+              height="32"
+              className="h-8 w-8 object-contain"
+            />
             <div>
-              <h1 className="font-bold text-sm tracking-tight leading-none">Berkah Kajeng</h1>
-              <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">Management System</p>
+              <h1 className="font-bold text-sm tracking-tight leading-none">
+                Berkah Kajeng
+              </h1>
+              <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">
+                Management System
+              </p>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right mr-1">
-            <p className="text-[10px] font-bold uppercase text-zinc-400 leading-none">{auth.user?.role}</p>
+            <p className="text-[10px] font-bold uppercase text-zinc-400 leading-none">
+              {auth.user?.role}
+            </p>
           </div>
           <button
             onClick={handleLogout}
@@ -682,18 +888,28 @@ export default function App() {
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] md:hidden"
             />
             <motion.div
-              initial={{ x: '-100%' }}
+              initial={{ x: "-100%" }}
               animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed inset-y-0 left-0 w-[280px] bg-white dark:bg-zinc-900 z-[70] md:hidden flex flex-col shadow-2xl"
             >
               <div className="p-4 bg-zinc-900 flex items-center justify-between border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <img src="/logo.png" alt="Berkah Kajeng" width="40" height="40" className="h-10 w-10 object-contain" />
+                  <img
+                    src="/logo.png"
+                    alt="Berkah Kajeng"
+                    width="40"
+                    height="40"
+                    className="h-10 w-10 object-contain"
+                  />
                   <div>
-                    <h1 className="font-bold text-base tracking-tight text-white">Berkah Kajeng</h1>
-                    <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">Management System</p>
+                    <h1 className="font-bold text-base tracking-tight text-white">
+                      Berkah Kajeng
+                    </h1>
+                    <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">
+                      Management System
+                    </p>
                   </div>
                 </div>
                 <button
@@ -716,8 +932,10 @@ export default function App() {
                     className={cn(
                       "w-full flex items-center gap-4 p-4 rounded-2xl transition-all mb-1",
                       activeView === item.id
-                        ? (isDarkMode ? "bg-white text-zinc-900 shadow-lg shadow-white/10" : "bg-zinc-900 text-white shadow-lg shadow-zinc-900/20")
-                        : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        ? isDarkMode
+                          ? "bg-white text-zinc-900 shadow-lg shadow-white/10"
+                          : "bg-zinc-900 text-white shadow-lg shadow-zinc-900/20"
+                        : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800",
                     )}
                   >
                     <item.icon size={20} />
@@ -733,9 +951,13 @@ export default function App() {
                   </div>
                   <div>
                     <p className="text-sm font-bold dark:text-white">
-                      {auth.user?.role === 'owner' ? `Hallo Pak Bos ${auth.user?.full_name}` : `Hi, ${auth.user?.full_name}`}
+                      {auth.user?.role === "owner"
+                        ? `Hallo Pak Bos ${auth.user?.full_name}`
+                        : `Hi, ${auth.user?.full_name}`}
                     </p>
-                    <p className="text-[10px] font-bold text-zinc-400 tracking-widest font-mono">{auth.user?.username}</p>
+                    <p className="text-[10px] font-bold text-zinc-400 tracking-widest font-mono">
+                      {auth.user?.username}
+                    </p>
                   </div>
                 </div>
                 <button
@@ -755,14 +977,18 @@ export default function App() {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="hidden md:flex h-16 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 items-center justify-between px-8 sticky top-0 z-30 print:hidden">
           <h2 className="font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest text-xs">
-            {menuItems.find(m => m.id === activeView)?.label}
+            {menuItems.find((m) => m.id === activeView)?.label}
           </h2>
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-xs font-bold text-zinc-900 dark:text-white">
-                {auth.user?.role === 'owner' ? `Hallo Pak Bos ${auth.user?.full_name}` : `Hi, ${auth.user?.full_name}`}
+                {auth.user?.role === "owner"
+                  ? `Hallo Pak Bos ${auth.user?.full_name}`
+                  : `Hi, ${auth.user?.full_name}`}
               </p>
-              <p className="text-[10px] text-zinc-400 font-mono">{auth.user?.username}</p>
+              <p className="text-[10px] text-zinc-400 font-mono">
+                {auth.user?.username}
+              </p>
             </div>
             <button
               onClick={handleLogout}
@@ -779,11 +1005,19 @@ export default function App() {
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/50 dark:bg-zinc-950/50 backdrop-blur-sm">
               <div className="flex flex-col items-center gap-4">
                 <div className="w-12 h-12 border-4 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-white rounded-full animate-spin"></div>
-                <p className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-widest">Memuat Data...</p>
+                <p className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-widest">
+                  Memuat Data...
+                </p>
               </div>
             </div>
           )}
-          <React.Suspense fallback={<div className="p-4 md:p-8"><ViewSkeleton /></div>}>
+          <React.Suspense
+            fallback={
+              <div className="p-4 md:p-8">
+                <ViewSkeleton />
+              </div>
+            }
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeView}
@@ -793,98 +1027,103 @@ export default function App() {
                 transition={{ duration: 0.2 }}
                 className="h-full"
               >
-              <div className="p-4 md:p-8">
-                {activeView === 'dashboard' && (
-                  <React.Suspense fallback={<DashboardSkeleton />}>
-                    <DashboardView
-                      data={dashboardData}
-                      salesHistory={salesHistory}
-                      purchasesHistory={history}
-                      inventory={inventory}
-                      expenses={expenses}
-                      userRole={auth.user?.role || 'mandor'}
+                <div className="p-4 md:p-8">
+                  {activeView === "dashboard" && (
+                    <React.Suspense fallback={<DashboardSkeleton />}>
+                      <DashboardView
+                        data={dashboardData}
+                        salesHistory={salesHistory}
+                        purchasesHistory={history}
+                        inventory={inventory}
+                        expenses={expenses}
+                        userRole={auth.user?.role || "mandor"}
+                      />
+                    </React.Suspense>
+                  )}
+                  {activeView === "purchase" && (
+                    <PurchaseView
+                      activeSet={activeSet}
+                      setActiveSet={setActiveSet}
+                      history={history}
+                      onSave={handleSaveSet}
+                      onDelete={handleDeleteSet}
+                      isLoading={isSaving}
+                      createNewSet={createNewSet}
+                      suppliers={suppliers}
+                      woodTypes={woodTypes}
+                      onAddWoodType={handleAddWoodType}
+                      onDeleteWoodType={handleDeleteWoodType}
+                      onSaveSupplier={handleSaveSupplier}
+                      onDeleteSupplier={handleDeleteSupplier}
+                      userRole={auth.user?.role || "mandor"}
                     />
-                  </React.Suspense>
-                )}
-                {activeView === 'purchase' && (
-                  <PurchaseView
-                    activeSet={activeSet}
-                    setActiveSet={setActiveSet}
-                    history={history}
-                    onSave={handleSaveSet}
-                    onDelete={handleDeleteSet}
-                    isLoading={isSaving}
-                    createNewSet={createNewSet}
-                    suppliers={suppliers}
-                    woodTypes={woodTypes}
-                    onAddWoodType={handleAddWoodType}
-                    onDeleteWoodType={handleDeleteWoodType}
-                    onSaveSupplier={handleSaveSupplier}
-                    onDeleteSupplier={handleDeleteSupplier}
-                    userRole={auth.user?.role || 'mandor'}
-                  />
-                )}
-                {activeView === 'inventory' && <InventoryView inventory={inventory} />}
-                {activeView === 'sales' && (
-                  <SalesView
-                    inventory={inventory}
-                    onSave={handleSaveSale}
-                    onDelete={handleDeleteSale}
-                    salesHistory={salesHistory}
-                    customers={customers}
-                  />
-                )}
-                {activeView === 'suppliers' && (
-                  <SuppliersView
-                    suppliers={suppliers}
-                    onSave={handleSaveSupplier}
-                    onDelete={handleDeleteSupplier}
-                  />
-                )}
-                {activeView === 'customers' && (
-                  <CustomersView
-                    customers={customers}
-                    onSave={handleSaveCustomer}
-                    onDelete={handleDeleteCustomer}
-                  />
-                )}
-                {activeView === 'expenses' && (
-                  <ExpensesView
-                    expenses={expenses}
-                    onSave={handleSaveExpense}
-                    onDelete={handleDeleteExpense}
-                  />
-                )}
-                {activeView === 'reports' && (
-                  <ReportsView
-                    inventory={inventory}
-                    sales={salesHistory}
-                    purchases={history}
-                    expenses={expenses}
-                  />
-                )}
-                {activeView === 'audit-logs' && (
-                  <AuditLogsView logs={auditLogs} />
-                )}
-                 {activeView === 'users' && (
-                   <UserManagementView 
-                    auth={auth} 
-                    onDeleteUser={handleDeleteUser}
-                  />
-                 )}
-                {activeView === 'profile' && (
-                  <ProfileView
-                    auth={auth}
-                    onUpdateAuth={(user) => {
-                      const newAuth = { ...auth, user };
-                      setAuth(newAuth);
-                      localStorage.setItem('logyard_auth', JSON.stringify(newAuth.user));
-                    }}
-                  />
-                )}
-              </div>
-            </motion.div>
-          </AnimatePresence>
+                  )}
+                  {activeView === "inventory" && (
+                    <InventoryView inventory={inventory} />
+                  )}
+                  {activeView === "sales" && (
+                    <SalesView
+                      inventory={inventory}
+                      onSave={handleSaveSale}
+                      onDelete={handleDeleteSale}
+                      salesHistory={salesHistory}
+                      customers={customers}
+                    />
+                  )}
+                  {activeView === "suppliers" && (
+                    <SuppliersView
+                      suppliers={suppliers}
+                      onSave={handleSaveSupplier}
+                      onDelete={handleDeleteSupplier}
+                    />
+                  )}
+                  {activeView === "customers" && (
+                    <CustomersView
+                      customers={customers}
+                      onSave={handleSaveCustomer}
+                      onDelete={handleDeleteCustomer}
+                    />
+                  )}
+                  {activeView === "expenses" && (
+                    <ExpensesView
+                      expenses={expenses}
+                      onSave={handleSaveExpense}
+                      onDelete={handleDeleteExpense}
+                    />
+                  )}
+                  {activeView === "reports" && (
+                    <ReportsView
+                      inventory={inventory}
+                      sales={salesHistory}
+                      purchases={history}
+                      expenses={expenses}
+                    />
+                  )}
+                  {activeView === "audit-logs" && (
+                    <AuditLogsView logs={auditLogs} />
+                  )}
+                  {activeView === "users" && (
+                    <UserManagementView
+                      auth={auth}
+                      onDeleteUser={handleDeleteUser}
+                    />
+                  )}
+                  {activeView === "profile" && (
+                    <ProfileView
+                      auth={auth}
+                      onUpdateAuth={(user) => {
+                        const newAuth = { ...auth, user };
+                        setAuth(newAuth);
+                        localStorage.setItem(
+                          "logyard_auth",
+                          JSON.stringify(newAuth.user),
+                        );
+                      }}
+                    />
+                  )}
+                </div>
+              </motion.div>
+            </AnimatePresence>
           </React.Suspense>
         </div>
       </main>
@@ -894,7 +1133,11 @@ export default function App() {
         onClick={() => setIsDarkMode(!isDarkMode)}
         className="md:hidden print:hidden fixed bottom-6 right-6 w-14 h-14 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full shadow-2xl flex items-center justify-center z-[100] active:scale-90 transition-transform border border-white/10 dark:border-zinc-200"
       >
-        {isDarkMode ? <Sun size={24} className="text-yellow-400" /> : <Moon size={24} />}
+        {isDarkMode ? (
+          <Sun size={24} className="text-yellow-400" />
+        ) : (
+          <Moon size={24} />
+        )}
       </button>
       <ConfirmationModal
         isOpen={modalConfig.isOpen}
@@ -914,9 +1157,15 @@ export default function App() {
             exit={{ opacity: 0, y: 50, scale: 0.9 }}
             className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-6 py-4 rounded-2xl shadow-2xl font-medium tracking-wide"
           >
-            {toast.type === 'success' && <CheckCircle2 className="text-emerald-500" size={24} />}
-            {toast.type === 'info' && <Info className="text-blue-500" size={24} />}
-            {toast.type === 'error' && <XCircle className="text-red-500" size={24} />}
+            {toast.type === "success" && (
+              <CheckCircle2 className="text-emerald-500" size={24} />
+            )}
+            {toast.type === "info" && (
+              <Info className="text-blue-500" size={24} />
+            )}
+            {toast.type === "error" && (
+              <XCircle className="text-red-500" size={24} />
+            )}
             <p className="text-sm">{toast.message}</p>
           </motion.div>
         )}

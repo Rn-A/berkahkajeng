@@ -189,7 +189,7 @@ export default function UserManagementView({ auth, onDeleteUser }: UserManagemen
                   Password {isEditing && <span className="text-zinc-400 lowercase font-normal italic">(Reset?)</span>}
                 </label>
                 <input
-                  type="text"
+                  type="password"
                   required={!isEditing}
                   value={formData.password}
                   onChange={e => setFormData({...formData, password: e.target.value})}
