@@ -53,7 +53,7 @@ const SuppliersView = lazyWithRetry(() => import("./components/SuppliersView"));
 const CustomersView = lazyWithRetry(() => import("./components/CustomersView"));
 const ExpensesView = lazyWithRetry(() => import("./components/ExpensesView"));
 const AuditLogsView = lazyWithRetry(
-  () => import("./components/AuditLogsView.tsx"),
+  () => import("./components/AuditLogsView"),
 );
 const UserManagementView = lazyWithRetry(
   () => import("./components/UserManagementView"),

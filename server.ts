@@ -103,7 +103,7 @@ const roundPrice = (price: number): number => {
 // FIX #7: Add security headers with Helmet
 app.use(
   helmet({
-    contentSecurityPolicy: {
+    contentSecurityPolicy: process.env.NODE_ENV === "development" ? false : {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
@@ -274,12 +274,6 @@ export async function initDB() {
 
     // Insert or repair default users
     const [existingUsers]: any = await connection.query("SELECT * FROM users");
-
-    // Map of known default passwords per username
-    const defaultPasswords: Record<string, string> = {
-      owner: "admin123",
-      mandor: "mandor123",
-    };
 
     // FIX #8: Remove hardcoded default credentials
     // Default users are now managed via environment variables or first-time setup
@@ -531,9 +525,11 @@ apiRouter.post("/login", loginLimiter, async (req, res) => {
   username = username?.trim();
   password = password?.trim();
 
-  console.log(
-    `[${SERVER_ID}] Login attempt - Username: "${username}", DB Connected: ${dbConnected}`,
-  );
+  if (process.env.NODE_ENV === "development") {
+    console.log(
+      `[${SERVER_ID}] Login attempt - Username: "${username}", DB Connected: ${dbConnected}`,
+    );
+  }
 
   // Direct Database Authentication
   // Fallback to mock data if DB is not connected is handled below
