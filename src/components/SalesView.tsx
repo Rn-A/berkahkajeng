@@ -41,21 +41,25 @@ const formatCurrency = (value: number) => {
 
 // Helper Terbilang
 const terbilang = (n: number): string => {
-  n = Math.floor(n);
-  if (n < 0) return "Minus " + terbilang(Math.floor(-n));
-  const words = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
-  let res = "";
-  if (n < 12) res = words[n];
-  else if (n < 20) res = terbilang(n - 10) + " Belas";
-  else if (n < 100) res = terbilang(Math.floor(n / 10)) + " Puluh " + terbilang(n % 10);
-  else if (n < 200) res = "Seratus " + terbilang(n - 100);
-  else if (n < 1000) res = terbilang(Math.floor(n / 100)) + " Ratus " + terbilang(n % 100);
-  else if (n < 2000) res = "Seribu " + terbilang(n - 1000);
-  else if (n < 1000000) res = terbilang(Math.floor(n / 1000)) + " Ribu " + terbilang(n % 1000);
-  else if (n < 1000000000) res = terbilang(Math.floor(n / 1000000)) + " Juta " + terbilang(n % 1000000);
-  else if (n < 1000000000000) res = terbilang(Math.floor(n / 1000000000)) + " Miliar " + terbilang(n % 1000000000);
-  else if (n < 1000000000000000) res = terbilang(Math.floor(n / 1000000000000)) + " Triliun " + terbilang(n % 1000000000000);
-  return res.trim() + " Rupiah";
+  const core = (num: number): string => {
+    num = Math.floor(num);
+    if (num < 0) return "Minus " + core(Math.floor(-num));
+    const words = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
+    let res = "";
+    if (num < 12) res = words[num];
+    else if (num < 20) res = core(num - 10) + " Belas";
+    else if (num < 100) res = core(Math.floor(num / 10)) + " Puluh " + core(num % 10);
+    else if (num < 200) res = "Seratus " + core(num - 100);
+    else if (num < 1000) res = core(Math.floor(num / 100)) + " Ratus " + core(num % 100);
+    else if (num < 2000) res = "Seribu " + core(num - 1000);
+    else if (num < 1000000) res = core(Math.floor(num / 1000)) + " Ribu " + core(num % 1000);
+    else if (num < 1000000000) res = core(Math.floor(num / 1000000)) + " Juta " + core(num % 1000000);
+    else if (num < 1000000000000) res = core(Math.floor(num / 1000000000)) + " Miliar " + core(num % 1000000000);
+    else if (num < 1000000000000000) res = core(Math.floor(num / 1000000000000)) + " Triliun " + core(num % 1000000000000);
+    return res.trim();
+  };
+  if (n === 0) return "Nol Rupiah";
+  return core(n).replace(/\s+/g, ' ').trim() + " Rupiah";
 };
 
 interface SaleItemRowProps {
@@ -355,8 +359,18 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
 
     for (const item of saleItems) {
       const isX = item.condition === 'X' || item.diameter_group === 'X' || item.diameter_group === '<10';
-      if (!item.wood_type || (!isX && !item.volume) || !item.sale_price_per_m3 || !item.condition) {
-        alert('Mohon lengkapi detail item (Jenis Kayu, Kondisi, Volume/Batang, Harga).');
+      if (!item.wood_type || !item.length || !item.condition || !item.diameter_group || !item.sale_price_per_m3) {
+        alert('Mohon lengkapi semua atribut detail item (Jenis Kayu, Panjang, Kondisi, Diameter, Harga).');
+        return;
+      }
+      
+      if (isX && (!item.total_logs || item.total_logs <= 0)) {
+        alert('Untuk kondisi X, jumlah Batang harus diisi lebih dari 0.');
+        return;
+      }
+
+      if (!isX && (!item.volume || item.volume <= 0)) {
+        alert('Untuk kondisi selain X, Volume (m³) harus diisi lebih dari 0.');
         return;
       }
 
