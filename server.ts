@@ -1218,15 +1218,27 @@ apiRouter.post("/sales", authenticateToken, async (req, res) => {
       if (inv.length === 0 || inv[0].total_volume < item.volume)
         throw new Error("Stok tidak cukup");
       const cost = Number(inv[0].avg_price);
-      totalRev += item.volume * item.sale_price_per_m3;
-      totalCost += item.volume * cost;
-
-      // Calculate proportional log deduction based on volume fraction sold
+      const isX = item.condition === 'X' || item.diameter_group === 'X' || item.diameter_group === '<10';
       const currentVolume = Number(inv[0].total_volume);
       const currentLogs = Number(inv[0].total_logs);
-      const volumeFraction =
-        currentVolume > 0 ? item.volume / currentVolume : 1;
-      const logsToDeduct = Math.round(currentLogs * volumeFraction);
+      
+      let logsToDeduct = 0;
+      let rev = 0;
+      let costAmount = 0;
+
+      if (isX) {
+        logsToDeduct = Number(item.total_logs || 0);
+        rev = logsToDeduct * Number(item.sale_price_per_m3 || 0);
+        costAmount = logsToDeduct * cost;
+      } else {
+        const volumeFraction = currentVolume > 0 ? Number(item.volume) / currentVolume : 1;
+        logsToDeduct = Number(item.total_logs) || Math.round(currentLogs * volumeFraction);
+        rev = Number(item.volume) * Number(item.sale_price_per_m3 || 0);
+        costAmount = Number(item.volume) * cost;
+      }
+
+      totalRev += rev;
+      totalCost += costAmount;
 
       // Simpan logs_deducted untuk reversal
       await connection.query(
@@ -1238,18 +1250,18 @@ apiRouter.post("/sales", authenticateToken, async (req, res) => {
           item.diameter_group,
           item.length,
           item.condition || "",
-          item.volume,
+          Number(item.volume || 0),
           logsToDeduct,
           item.sale_price_per_m3,
           cost,
-          item.volume * item.sale_price_per_m3,
-          item.volume * cost,
-          item.volume * item.sale_price_per_m3 - item.volume * cost,
+          rev,
+          costAmount,
+          rev - costAmount,
         ],
       );
       await connection.query(
         "UPDATE inventory SET total_logs = GREATEST(0, total_logs - ?), total_volume = GREATEST(0, total_volume - ?), total_value = GREATEST(0, total_value - ?) WHERE id = ?",
-        [logsToDeduct, item.volume, item.volume * cost, inv[0].id],
+        [logsToDeduct, Number(item.volume || 0), costAmount, inv[0].id],
       );
 
       // Clean up: if remaining volume is essentially zero (floating-point residual), zero out everything

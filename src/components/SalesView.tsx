@@ -743,7 +743,7 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
                             <p className="text-xs text-zinc-500">D: {item.diameter_group} | P: {item.length} cm | {item.condition}</p>
                           </td>
                           <td className="py-4 text-center font-mono font-bold">
-                            {(item.condition === 'X' || item.diameter_group === 'X' || item.diameter_group === '<10') ? `${item.total_logs} Btg` : `${item.volume.toFixed(3)} m³`}
+                            {(item.condition === 'X' || item.diameter_group === 'X' || item.diameter_group === '<10') ? `${item.total_logs || item.logs_deducted || 0} Btg` : `${(item.volume || 0).toFixed(3)} m³`}
                           </td>
                           <td className="py-4 text-right font-mono">{formatCurrency(item.sale_price_per_m3)}</td>
                           <td className="py-4 text-right font-bold text-zinc-900">{formatCurrency(item.subtotal_revenue || (item.volume * item.sale_price_per_m3))}</td>
