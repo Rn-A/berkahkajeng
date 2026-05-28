@@ -929,6 +929,12 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
               group === "X" ? "X" : cat.condition_val || "Umum",
             ],
           );
+          // Recalculate avg_price after reversal
+          const condVal = group === "X" ? "X" : cat.condition_val || "Umum";
+          await connection.query(
+            `UPDATE inventory SET avg_price = IF(total_volume > 0, total_value / total_volume, IF(total_logs > 0, total_value / total_logs, 0)) WHERE wood_type = ? AND diameter_group = ? AND length = ? AND condition_val = ?`,
+            [cat.woodType, group, cat.length, condVal],
+          );
         }
         // Delete old logs and categories to prevent primary key conflicts or orphaned data
         await connection.query(
@@ -1013,7 +1019,11 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
             total_logs = total_logs + VALUES(total_logs),
             total_volume = total_volume + VALUES(total_volume),
             total_value = total_value + VALUES(total_value),
-            avg_price = IF((total_volume + VALUES(total_volume)) > 0, (total_value + VALUES(total_value)) / (total_volume + VALUES(total_volume)), 0)
+            avg_price = IF((total_volume + VALUES(total_volume)) > 0,
+              (total_value + VALUES(total_value)) / (total_volume + VALUES(total_volume)),
+              IF((total_logs + VALUES(total_logs)) > 0,
+                (total_value + VALUES(total_value)) / (total_logs + VALUES(total_logs)),
+                0))
         `,
           [
             cat.woodType,
@@ -1022,7 +1032,7 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
             group === "X" ? "X" : cat.condition || "Umum",
             data.count,
             data.volume,
-            data.volume > 0 ? data.value / data.volume : 0,
+            data.volume > 0 ? data.value / data.volume : (data.count > 0 ? data.value / data.count : 0),
             data.value,
           ],
         );
@@ -1099,6 +1109,12 @@ apiRouter.delete("/sets/:id", authenticateToken, async (req, res) => {
             cat.length,
             group === "X" ? "X" : cat.condition_val || "Umum",
           ],
+        );
+        // Recalculate avg_price after reversal
+        const condVal = group === "X" ? "X" : cat.condition_val || "Umum";
+        await connection.query(
+          `UPDATE inventory SET avg_price = IF(total_volume > 0, total_value / total_volume, IF(total_logs > 0, total_value / total_logs, 0)) WHERE wood_type = ? AND diameter_group = ? AND length = ? AND condition_val = ?`,
+          [cat.woodType, group, cat.length, condVal],
         );
       }
     }
@@ -1265,10 +1281,19 @@ apiRouter.post("/sales", authenticateToken, async (req, res) => {
       );
 
       // Clean up: if remaining volume is essentially zero (floating-point residual), zero out everything
-      await connection.query(
-        "UPDATE inventory SET total_logs = 0, total_volume = 0, total_value = 0, avg_price = 0 WHERE id = ? AND total_volume < 0.001",
-        [inv[0].id],
-      );
+      // But only for non-X items; X items have volume=0 by design
+      if (!isX) {
+        await connection.query(
+          "UPDATE inventory SET total_logs = 0, total_volume = 0, total_value = 0, avg_price = 0 WHERE id = ? AND total_volume < 0.001",
+          [inv[0].id],
+        );
+      } else {
+        // For X items: recalculate avg_price per batang after deduction
+        await connection.query(
+          "UPDATE inventory SET avg_price = IF(total_logs > 0, total_value / total_logs, 0) WHERE id = ?",
+          [inv[0].id],
+        );
+      }
     }
 
     // Update the parent record with calculated totals
@@ -1313,6 +1338,7 @@ apiRouter.delete("/sales/:id", authenticateToken, async (req, res) => {
     for (const item of items) {
       // Reversal stok menggunakan logs_deducted
       const logsToRestore = item.logs_deducted || 1;
+      const isX = item.condition_val === 'X' || item.diameter_group === 'X' || item.diameter_group === '<10';
       await connection.query(
         `
         UPDATE inventory 
@@ -1331,6 +1357,18 @@ apiRouter.delete("/sales/:id", authenticateToken, async (req, res) => {
           item.condition_val || "Umum",
         ],
       );
+      // Recalculate avg_price after reversal
+      if (isX) {
+        await connection.query(
+          `UPDATE inventory SET avg_price = IF(total_logs > 0, total_value / total_logs, 0) WHERE wood_type = ? AND diameter_group = ? AND length = ? AND condition_val = ?`,
+          [item.wood_type, item.diameter_group, item.length, item.condition_val || "Umum"],
+        );
+      } else {
+        await connection.query(
+          `UPDATE inventory SET avg_price = IF(total_volume > 0, total_value / total_volume, 0) WHERE wood_type = ? AND diameter_group = ? AND length = ? AND condition_val = ?`,
+          [item.wood_type, item.diameter_group, item.length, item.condition_val || "Umum"],
+        );
+      }
     }
 
     await connection.query("DELETE FROM sales WHERE id = ?", [id]);

@@ -209,7 +209,7 @@ const SaleItemRow = React.memo(({ item, inventory, onUpdate, onRemove }: SaleIte
           />
         </div>
         {selectedInv && (
-          <p className="text-[9px] text-emerald-600 dark:text-emerald-400 mt-1 truncate">Modal: {formatCurrency(selectedInv.avg_price)}</p>
+          <p className="text-[9px] text-emerald-600 dark:text-emerald-400 mt-1 truncate">Modal: {formatCurrency(selectedInv.avg_price)}{isX ? '/batang' : '/m³'}</p>
         )}
       </div>
       <div className="md:col-span-1 flex justify-end">
