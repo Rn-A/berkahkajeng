@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, X } from 'lucide-react';
 
@@ -25,7 +26,7 @@ export default function ConfirmationModal({
 }: ConfirmationModalProps) {
   return (
     <AnimatePresence>
-      {isOpen && (
+      {isOpen && createPortal(
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
@@ -75,7 +76,8 @@ export default function ConfirmationModal({
               </button>
             </div>
           </motion.div>
-        </div>
+        </div>,
+        document.body
       )}
     </AnimatePresence>
   );

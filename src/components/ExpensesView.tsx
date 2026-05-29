@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CreditCard, Plus, Search, Calendar, DollarSign, X, Save, FileText, Download, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Expense } from '../types';
 import { cn } from '../lib/utils';
@@ -288,7 +289,7 @@ export default function ExpensesView({ expenses, onSave, onDelete }: ExpensesVie
       </div>
 
       <AnimatePresence>
-        {showForm && (
+        {showForm && createPortal(
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
@@ -363,7 +364,8 @@ export default function ExpensesView({ expenses, onSave, onDelete }: ExpensesVie
                 </button>
               </form>
             </motion.div>
-          </div>
+          </div>,
+          document.body
         )}
       </AnimatePresence>
     </div>

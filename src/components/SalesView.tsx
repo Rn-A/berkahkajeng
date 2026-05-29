@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ShoppingCart,
   Plus,
@@ -559,7 +560,7 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
       </div>
 
       {/* Sale Form Modal */}
-      {showForm && (
+      {showForm && createPortal(
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6 print:hidden">
           <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" onClick={() => setShowForm(false)} />
           <div className="relative w-full max-w-6xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-zinc-200 dark:border-zinc-800">
@@ -664,11 +665,12 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Sale Detail / Nota Modal */}
-      {selectedSale && (
+      {selectedSale && createPortal(
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-6 overflow-y-auto print:static print:block print:p-0">
           <div className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm print:hidden" onClick={() => setSelectedSale(null)} />
           <div className="relative w-full max-w-3xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto border border-zinc-200 dark:border-zinc-800 print:max-w-none print:shadow-none print:border-none print:overflow-visible print:static">
@@ -785,7 +787,8 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

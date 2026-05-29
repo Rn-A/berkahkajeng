@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus,
   Trash2,
@@ -529,7 +530,7 @@ export default function PurchaseView({
         )}
       </AnimatePresence>
       {/* Type Management Modal */}
-      {showTypeManager && (
+      {showTypeManager && createPortal(
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-sm p-6">
             <div className="flex justify-between items-center mb-4">
@@ -554,12 +555,13 @@ export default function PurchaseView({
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Supplier Management Modal */}
       <AnimatePresence>
-        {showSupplierManager && (
+        {showSupplierManager && createPortal(
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
@@ -639,7 +641,8 @@ export default function PurchaseView({
                 ))}
               </div>
             </motion.div>
-          </div>
+          </div>,
+          document.body
         )}
       </AnimatePresence>
 
@@ -1302,7 +1305,7 @@ export default function PurchaseView({
 
       {/* Error Modal */}
       <AnimatePresence>
-        {errorMessage && (
+        {errorMessage && createPortal(
           <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-red-950/20 backdrop-blur-sm" onClick={() => setErrorMessage(null)} />
             <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-sm bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border-2 border-red-500 overflow-hidden flex flex-col items-center text-center p-8">
@@ -1315,13 +1318,14 @@ export default function PurchaseView({
                 Saya Mengerti
               </button>
             </motion.div>
-          </div>
+          </div>,
+          document.body
         )}
       </AnimatePresence>
 
       {/* History Modal */}
       <AnimatePresence>
-        {showHistory && (
+        {showHistory && createPortal(
           <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 md:p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowHistory(false)} className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] border border-zinc-200 dark:border-zinc-800">
@@ -1417,7 +1421,8 @@ export default function PurchaseView({
                 </div>
               )}
             </motion.div>
-          </div>
+          </div>,
+          document.body
         )}
       </AnimatePresence>
     </div>
