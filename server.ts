@@ -332,6 +332,15 @@ export async function initDB() {
       }
     }
 
+    // Migration: Fix total_value and avg_price for condition X items
+    // X condition items should be valued at Rp 1000/batang flat price
+    await connection.query(
+      `UPDATE inventory 
+       SET total_value = total_logs * 1000,
+           avg_price = 1000
+       WHERE total_volume = 0 AND total_logs > 0 AND (condition_val = 'X' OR avg_price = 0)`,
+    );
+
     connection.release();
     dbConnected = true;
     console.log(
@@ -904,7 +913,7 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
 
           const isX = cat.condition_val === "X" || log.diameter < 10;
           const vol = isX ? 0 : log.volume;
-          const val = log.diameter < 10 ? 1000 : log.volume * cat.pricePerM3;
+          const val = isX ? 1000 : log.volume * cat.pricePerM3;
 
           oldGroups[group].count += 1;
           oldGroups[group].volume += vol;
@@ -956,10 +965,11 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
       for (const log of cat.logs) {
         // According to user request: Category X has 0 volume in inventory/reports
         // According to UI logic: logs < 10cm have 0 volume and flat price of 1000
+        // FIX: Condition X logs ALL get flat price of 1000/batang regardless of diameter
         const isX = cat.condition === "X" || log.diameter < 10;
         const vol = isX ? 0 : log.volume;
         catVol += vol;
-        catVal += log.diameter < 10 ? 1000 : log.volume * cat.pricePerM3;
+        catVal += isX ? 1000 : log.volume * cat.pricePerM3;
       }
       totalVolume += catVol;
       totalValue += catVal;
@@ -996,7 +1006,7 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
 
         const isX = cat.condition === "X" || log.diameter < 10;
         const vol = isX ? 0 : log.volume;
-        const val = log.diameter < 10 ? 1000 : log.volume * cat.pricePerM3;
+        const val = isX ? 1000 : log.volume * cat.pricePerM3;
 
         logGroups[group].count += 1;
         logGroups[group].volume += vol;
@@ -1084,7 +1094,7 @@ apiRouter.delete("/sets/:id", authenticateToken, async (req, res) => {
 
         const isX = cat.condition_val === "X" || log.diameter < 10;
         const vol = isX ? 0 : log.volume;
-        const val = log.diameter < 10 ? 1000 : log.volume * cat.pricePerM3;
+        const val = isX ? 1000 : log.volume * cat.pricePerM3;
 
         logGroups[group].count += 1;
         logGroups[group].volume += vol;

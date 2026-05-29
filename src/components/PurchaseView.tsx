@@ -237,7 +237,8 @@ export default function PurchaseView({
         return sum + (isX ? 0 : calculateVolume(log.diameter, cat.length || 200));
       }, 0);
       const catPrice = cat.logs.reduce((sum, log) => {
-        if (log.diameter < 10) return sum + 1000;
+        const isX = cat.condition === 'X' || log.diameter < 10;
+        if (isX) return sum + 1000;
         return sum + (calculateVolume(log.diameter, cat.length || 200) * cat.pricePerM3);
       }, 0);
       return { volume: acc.volume + catVolume, price: acc.price + catPrice };
@@ -499,7 +500,8 @@ export default function PurchaseView({
       return sum + (isX ? 0 : calculateVolume(l.diameter, cat.length || 200));
     }, 0);
     const price = cat.logs.reduce((sum, log) => {
-      if (log.diameter < 10) return sum + 1000;
+      const isX = cat.condition === 'X' || log.diameter < 10;
+      if (isX) return sum + 1000;
       return sum + (calculateVolume(log.diameter, cat.length || 200) * cat.pricePerM3);
     }, 0);
     return { volume, price };
