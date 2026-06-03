@@ -158,6 +158,25 @@ export const determineWoodCategory = (condition: WoodCondition, length: number, 
   return null;
 };
 
+export const getCategoryRuleInfo = (condition: WoodCondition): string => {
+  switch (condition) {
+    case 'X':
+      return "• Panjang: 100 cm atau 130 cm\n• Diameter: < 10 cm";
+    case 'Rijelk':
+      return "• Panjang: 100 cm atau 130 cm\n• Diameter: 10 - 19 cm\n  (Rijelk 1: 10-14 cm, Rijelk 2: 15-19 cm)";
+    case 'Super kecil':
+      return "• Panjang: 100 cm atau 130 cm\n• Diameter: 15 - 19 cm";
+    case 'C/Standar':
+      return "• Panjang: 100, 130, 200, atau 260 cm\n• Diameter: >= 20 cm";
+    case 'Super':
+      return "• Panjang: 100, 130, 200, atau 260 cm\n• Diameter: >= 20 cm";
+    case 'Kerab':
+      return "• Ukuran panjang dan diameter bebas";
+    default:
+      return "• Ukuran tidak sesuai dengan ketentuan kategori ini";
+  }
+};
+
 export default function PurchaseView({ 
   activeSet, 
   setActiveSet, 
@@ -355,7 +374,8 @@ export default function PurchaseView({
     const inferredName = determineWoodCategory(sessionCondition, sessionLength, diameter);
 
     if (!inferredName) {
-      setErrorMessage(`Kondisi: ${sessionCondition}\nPanjang: ${sessionLength} cm\nDiameter: ${diameter} cm\n\nData ini tidak memenuhi pedoman klasifikasi kategori.`);
+      const ruleInfo = getCategoryRuleInfo(sessionCondition);
+      setErrorMessage(`Kondisi: ${sessionCondition}\nPanjang: ${sessionLength} cm\nDiameter: ${diameter} cm\n\nData ini tidak memenuhi pedoman klasifikasi kategori.\n\nAturan/Rekomendasi Input untuk Kondisi ${sessionCondition}:\n${ruleInfo}`);
       return;
     }
 
