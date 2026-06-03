@@ -162,68 +162,70 @@ export default function CustomersView({ customers, onSave, onDelete }: Customers
         </div>
       )}
 
-      <AnimatePresence>
-        {showForm && createPortal(
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" 
-              onClick={resetForm} 
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800"
-            >
-              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-                <h2 className="text-lg font-bold dark:text-white">
-                  {editingId ? 'Edit Pelanggan' : 'Tambah Pelanggan Baru'}
-                </h2>
-                <button onClick={resetForm} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
-                  <X size={20} className="dark:text-zinc-400" />
-                </button>
-              </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Nama Pelanggan</label>
-                  <input 
-                    required
-                    type="text"
-                    className="input-field w-full"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  />
+      {createPortal(
+        <AnimatePresence>
+          {showForm && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" 
+                onClick={resetForm} 
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800"
+              >
+                <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                  <h2 className="text-lg font-bold dark:text-white">
+                    {editingId ? 'Edit Pelanggan' : 'Tambah Pelanggan Baru'}
+                  </h2>
+                  <button onClick={resetForm} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+                    <X size={20} className="dark:text-zinc-400" />
+                  </button>
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Nomor Telepon</label>
-                  <input 
-                    type="text"
-                    className="input-field w-full"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Alamat</label>
-                  <textarea 
-                    className="input-field w-full h-24 resize-none"
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  />
-                </div>
-                <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2 py-4 shadow-lg shadow-zinc-900/10 active:scale-95 transition-all">
-                  <Save size={20} />
-                  {editingId ? 'Update Pelanggan' : 'Simpan Pelanggan'}
-                </button>
-              </form>
-            </motion.div>
-          </div>,
-          document.body
-        )}
-      </AnimatePresence>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Nama Pelanggan</label>
+                    <input 
+                      required
+                      type="text"
+                      className="input-field w-full"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Nomor Telepon</label>
+                    <input 
+                      type="text"
+                      className="input-field w-full"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Alamat</label>
+                    <textarea 
+                      className="input-field w-full h-24 resize-none"
+                      value={formData.address}
+                      onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    />
+                  </div>
+                  <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2 py-4 shadow-lg shadow-zinc-900/10 active:scale-95 transition-all">
+                    <Save size={20} />
+                    {editingId ? 'Update Pelanggan' : 'Simpan Pelanggan'}
+                  </button>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

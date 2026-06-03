@@ -24,9 +24,9 @@ export default function ConfirmationModal({
   cancelText = 'Batal',
   variant = 'danger'
 }: ConfirmationModalProps) {
-  return (
+  return createPortal(
     <AnimatePresence>
-      {isOpen && createPortal(
+      {isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
@@ -76,9 +76,9 @@ export default function ConfirmationModal({
               </button>
             </div>
           </motion.div>
-        </div>,
-        document.body
+        </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

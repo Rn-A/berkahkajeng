@@ -559,92 +559,93 @@ export default function PurchaseView({
         document.body
       )}
 
-      {/* Supplier Management Modal */}
-      <AnimatePresence>
-        {showSupplierManager && createPortal(
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
-              onClick={() => setShowSupplierManager(false)} 
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-sm p-6 overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-2xl"
-            >
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold dark:text-white">Kelola Penyetor</h3>
-                <button onClick={() => setShowSupplierManager(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
-                  <X size={20} className="dark:text-zinc-400" />
-                </button>
-              </div>
-              
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Nama Penyetor</label>
-                  <input 
-                    className="input-field w-full"
-                    placeholder="Nama..."
-                    value={supplierFormData.name}
-                    onChange={(e) => setSupplierFormData({ ...supplierFormData, name: e.target.value })}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    disabled={isSupplierSaving}
-                    onClick={async () => {
-                      if (!supplierFormData.name) return;
-                      setIsSupplierSaving(true);
-                      try {
-                        await onSaveSupplier({ ...supplierFormData, id: supplierFormData.id || generateUUID() });
-                        setSupplierFormData({ id: '', name: '', phone: '', address: '' });
-                        showToast('Penyetor berhasil disimpan!');
-                      } catch (error) {
-                        showToast('Gagal menyimpan penyetor.', 'error');
-                      } finally {
-                        setIsSupplierSaving(false);
-                      }
-                    }}
-                    className={`bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-4 py-2 rounded-xl flex items-center gap-2 font-bold text-xs w-full justify-center transition-opacity ${isSupplierSaving ? 'opacity-50' : ''}`}
-                  >
-                    {isSupplierSaving ? (
-                      <div className="w-4 h-4 border-2 border-zinc-400 border-t-zinc-900 dark:border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <Plus size={16} />
-                    )}
-                    {isSupplierSaving ? 'Menyimpan...' : (supplierFormData.id ? 'Update' : 'Tambah')}
+      {createPortal(
+        <AnimatePresence>
+          {showSupplierManager && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+                onClick={() => setShowSupplierManager(false)} 
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-sm p-6 overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-2xl"
+              >
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold dark:text-white">Kelola Penyetor</h3>
+                  <button onClick={() => setShowSupplierManager(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+                    <X size={20} className="dark:text-zinc-400" />
                   </button>
-                  {supplierFormData.id && (
-                    <button 
-                      onClick={() => setSupplierFormData({ id: '', name: '', phone: '', address: '' })}
-                      className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-4 py-2 rounded-xl text-xs font-bold"
-                    >
-                      Batal
-                    </button>
-                  )}
                 </div>
-              </div>
-
-              <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
-                {suppliers.filter(s => s.name !== 'Umum').map(s => (
-                  <div key={s.id} className="flex justify-between items-center p-3 border rounded-xl bg-zinc-50 dark:bg-zinc-800/50 dark:border-zinc-700">
-                    <span className="text-sm font-medium dark:text-zinc-200">{s.name}</span>
-                    <div className="flex gap-2">
-                      <button onClick={() => setSupplierFormData(s)} className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-1.5 rounded-lg transition-colors"><Edit2 size={14} /></button>
-                      <button onClick={() => onDeleteSupplier(s.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"><Trash2 size={14} /></button>
-                    </div>
+                
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Nama Penyetor</label>
+                    <input 
+                      className="input-field w-full"
+                      placeholder="Nama..."
+                      value={supplierFormData.name}
+                      onChange={(e) => setSupplierFormData({ ...supplierFormData, name: e.target.value })}
+                    />
                   </div>
-                ))}
-              </div>
-            </motion.div>
-          </div>,
-          document.body
-        )}
-      </AnimatePresence>
+                  <div className="flex gap-2">
+                    <button 
+                      disabled={isSupplierSaving}
+                      onClick={async () => {
+                        if (!supplierFormData.name) return;
+                        setIsSupplierSaving(true);
+                        try {
+                          await onSaveSupplier({ ...supplierFormData, id: supplierFormData.id || generateUUID() });
+                          setSupplierFormData({ id: '', name: '', phone: '', address: '' });
+                          showToast('Penyetor berhasil disimpan!');
+                        } catch (error) {
+                          showToast('Gagal menyimpan penyetor.', 'error');
+                        } finally {
+                          setIsSupplierSaving(false);
+                        }
+                      }}
+                      className={`bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-4 py-2 rounded-xl flex items-center gap-2 font-bold text-xs w-full justify-center transition-opacity ${isSupplierSaving ? 'opacity-50' : ''}`}
+                    >
+                      {isSupplierSaving ? (
+                        <div className="w-4 h-4 border-2 border-zinc-400 border-t-zinc-900 dark:border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Plus size={16} />
+                      )}
+                      {isSupplierSaving ? 'Menyimpan...' : (supplierFormData.id ? 'Update' : 'Tambah')}
+                    </button>
+                    {supplierFormData.id && (
+                      <button 
+                        onClick={() => setSupplierFormData({ id: '', name: '', phone: '', address: '' })}
+                        className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-4 py-2 rounded-xl text-xs font-bold"
+                      >
+                        Batal
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
+                  {suppliers.filter(s => s.name !== 'Umum').map(s => (
+                    <div key={s.id} className="flex justify-between items-center p-3 border rounded-xl bg-zinc-50 dark:bg-zinc-800/50 dark:border-zinc-700">
+                      <span className="text-sm font-medium dark:text-zinc-200">{s.name}</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => setSupplierFormData(s)} className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-1.5 rounded-lg transition-colors"><Edit2 size={14} /></button>
+                        <button onClick={() => onDeleteSupplier(s.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Left Sidebar: Set Info & Categories */}
       <div className="w-full lg:w-72 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col overflow-hidden print:hidden shrink-0">
@@ -1304,127 +1305,131 @@ export default function PurchaseView({
       </div>
 
       {/* Error Modal */}
-      <AnimatePresence>
-        {errorMessage && createPortal(
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-red-950/20 backdrop-blur-sm" onClick={() => setErrorMessage(null)} />
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-sm bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border-2 border-red-500 overflow-hidden flex flex-col items-center text-center p-8">
-              <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-6">
-                <AlertTriangle size={40} />
-              </div>
-              <h3 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">Peringatan Input!</h3>
-              <p className="text-[15px] font-medium text-zinc-600 dark:text-zinc-300 mb-8 whitespace-pre-line leading-relaxed">{errorMessage}</p>
-              <button onClick={() => setErrorMessage(null)} className="w-full bg-red-500 hover:bg-red-600 active:scale-95 text-white font-bold py-4 rounded-xl transition-all shadow-md">
-                Saya Mengerti
-              </button>
-            </motion.div>
-          </div>,
-          document.body
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {errorMessage && (
+            <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-red-950/20 backdrop-blur-sm" onClick={() => setErrorMessage(null)} />
+              <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-sm bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border-2 border-red-500 overflow-hidden flex flex-col items-center text-center p-8">
+                <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-6">
+                  <AlertTriangle size={40} />
+                </div>
+                <h3 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">Peringatan Input!</h3>
+                <p className="text-[15px] font-medium text-zinc-600 dark:text-zinc-300 mb-8 whitespace-pre-line leading-relaxed">{errorMessage}</p>
+                <button onClick={() => setErrorMessage(null)} className="w-full bg-red-500 hover:bg-red-600 active:scale-95 text-white font-bold py-4 rounded-xl transition-all shadow-md">
+                  Saya Mengerti
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* History Modal */}
-      <AnimatePresence>
-        {showHistory && createPortal(
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 md:p-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowHistory(false)} className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] border border-zinc-200 dark:border-zinc-800">
-              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-lg font-bold dark:text-white">Riwayat Set Kayu</h2>
-                  <button
-                    onClick={exportToCSV}
-                    className="flex items-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    <Download size={14} />
-                    Export CSV
+      {createPortal(
+        <AnimatePresence>
+          {showHistory && (
+            <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 md:p-6">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowHistory(false)} className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" />
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] border border-zinc-200 dark:border-zinc-800">
+                <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-lg font-bold dark:text-white">Riwayat Set Kayu</h2>
+                    <button
+                      onClick={exportToCSV}
+                      className="flex items-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      <Download size={14} />
+                      Export CSV
+                    </button>
+                  </div>
+                  <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full">
+                    <X size={20} className="dark:text-zinc-400" />
                   </button>
                 </div>
-                <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full">
-                  <X size={20} className="dark:text-zinc-400" />
-                </button>
-              </div>
-              <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-                  <input
-                    type="text"
-                    placeholder="Cari supplier atau ID..."
-                    className={cn("input-field w-full !pl-10 py-2 text-sm")}
-                    value={searchTerm}
-                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                  />
+                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                    <input
+                      type="text"
+                      placeholder="Cari supplier atau ID..."
+                      className={cn("input-field w-full !pl-10 py-2 text-sm")}
+                      value={searchTerm}
+                      onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-                {currentHistoryItems.map(set => {
-                  const setTotals = calculateSetTotals(set);
-                  return (
-                    <div key={set.id} className="p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-bold text-zinc-900 dark:text-white">{set.supplierName || 'Tanpa Nama'}</p>
-                          <span className="text-[10px] font-mono bg-zinc-200 dark:bg-zinc-700 px-1.5 py-0.5 rounded text-zinc-500 uppercase">#{set.id.substring(0, 6)}</span>
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+                  {currentHistoryItems.map(set => {
+                    const setTotals = calculateSetTotals(set);
+                    return (
+                      <div key={set.id} className="p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-bold text-zinc-900 dark:text-white">{set.supplierName || 'Tanpa Nama'}</p>
+                            <span className="text-[10px] font-mono bg-zinc-200 dark:bg-zinc-700 px-1.5 py-0.5 rounded text-zinc-500 uppercase">#{set.id.substring(0, 6)}</span>
+                          </div>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400">{set.date} • {set.categories.length} Kategori • {set.categories.reduce((acc, c) => acc + c.logs.length, 0)} Batang</p>
+                          <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-2">{formatCurrency(setTotals.price)}</p>
                         </div>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{set.date} • {set.categories.length} Kategori • {set.categories.reduce((acc, c) => acc + c.logs.length, 0)} Batang</p>
-                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-2">{formatCurrency(setTotals.price)}</p>
+                        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                          <button 
+                            onClick={() => { 
+                              setActiveSet(set); 
+                              setShowHistory(false);
+                              if (set.categories.length > 0) {
+                                const firstCat = set.categories[0];
+                                setSelectedCategoryId(firstCat.id);
+                                // Sync session states when opening from history
+                                setSessionWoodType(firstCat.woodType);
+                                setSessionLength(firstCat.length);
+                                setSessionCondition(firstCat.condition);
+                              }
+                            }} 
+                            className="btn-secondary text-xs py-2 px-4"
+                          >
+                            Buka Kembali
+                          </button>
+                          <button onClick={() => onDelete(set.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-all"><Trash2 size={18} /></button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                        <button 
-                          onClick={() => { 
-                            setActiveSet(set); 
-                            setShowHistory(false);
-                            if (set.categories.length > 0) {
-                              const firstCat = set.categories[0];
-                              setSelectedCategoryId(firstCat.id);
-                              // Sync session states when opening from history
-                              setSessionWoodType(firstCat.woodType);
-                              setSessionLength(firstCat.length);
-                              setSessionCondition(firstCat.condition);
-                            }
-                          }} 
-                          className="btn-secondary text-xs py-2 px-4"
-                        >
-                          Buka Kembali
-                        </button>
-                        <button onClick={() => onDelete(set.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-all"><Trash2 size={18} /></button>
-                      </div>
+                    );
+                  })}
+                  {filteredHistory.length === 0 && (
+                    <div className="text-center py-12 text-zinc-400">
+                      <Search size={48} className="mx-auto mb-4 opacity-10" />
+                      <p>Tidak ada riwayat yang cocok.</p>
                     </div>
-                  );
-                })}
-                {filteredHistory.length === 0 && (
-                  <div className="text-center py-12 text-zinc-400">
-                    <Search size={48} className="mx-auto mb-4 opacity-10" />
-                    <p>Tidak ada riwayat yang cocok.</p>
+                  )}
+                </div>
+                {totalPages > 1 && (
+                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800/30 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Halaman {currentPage} dari {totalPages}</p>
+                    <div className="flex gap-2">
+                      <button
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(prev => prev - 1)}
+                        className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 disabled:opacity-30 hover:bg-white dark:hover:bg-zinc-800 transition-colors"
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+                      <button
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(prev => prev + 1)}
+                        className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 disabled:opacity-30 hover:bg-white dark:hover:bg-zinc-800 transition-colors"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
                   </div>
                 )}
-              </div>
-              {totalPages > 1 && (
-                <div className="p-4 bg-zinc-50 dark:bg-zinc-800/30 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Halaman {currentPage} dari {totalPages}</p>
-                  <div className="flex gap-2">
-                    <button
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage(prev => prev - 1)}
-                      className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 disabled:opacity-30 hover:bg-white dark:hover:bg-zinc-800 transition-colors"
-                    >
-                      <ChevronLeft size={14} />
-                    </button>
-                    <button
-                      disabled={currentPage === totalPages}
-                      onClick={() => setCurrentPage(prev => prev + 1)}
-                      className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 disabled:opacity-30 hover:bg-white dark:hover:bg-zinc-800 transition-colors"
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </div>,
-          document.body
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
