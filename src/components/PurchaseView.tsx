@@ -29,7 +29,7 @@ import {
   DIAMETER_RANGES,
   Supplier
 } from '../types';
-import { cn, roundPrice } from '../lib/utils';
+import { cn, roundPrice, generateUUID } from '../lib/utils';
 
 interface PurchaseViewProps {
   activeSet: WoodSet | null;
@@ -276,7 +276,7 @@ export default function PurchaseView({
       ? 'X' 
       : (determineWoodCategory(sessionCondition, sessionLength, 20) || `${sessionWoodType} ${sessionLength}cm`);
     const newCategory: WoodCategory = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name: name,
       woodType: sessionWoodType,
       length: sessionLength,
@@ -333,7 +333,7 @@ export default function PurchaseView({
       let newCategories = [...activeSet.categories];
       if (!targetCat) {
         targetCat = {
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           name: X_NAME,
           woodType: sessionWoodType,
           length: 0,
@@ -343,7 +343,7 @@ export default function PurchaseView({
         };
         newCategories.push(targetCat);
       }
-      const newLog: LogEntry = { id: crypto.randomUUID(), diameter, volume: 0 };
+      const newLog: LogEntry = { id: generateUUID(), diameter, volume: 0 };
       newCategories = newCategories.map(cat =>
         cat.id === targetCat!.id ? { ...cat, logs: [...cat.logs, newLog] } : cat
       );
@@ -387,7 +387,7 @@ export default function PurchaseView({
 
     if (!targetCat) {
       targetCat = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         name: inferredName,
         woodType: sessionWoodType,
         length: sessionLength,
@@ -399,7 +399,7 @@ export default function PurchaseView({
     }
 
     const newLog: LogEntry = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       diameter,
       volume: calculateVolume(diameter, sessionLength)
     };
@@ -439,7 +439,7 @@ export default function PurchaseView({
 
     const cat = activeSet.categories[catIndex];
     const log: LogEntry = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       diameter,
       volume: calculateVolume(diameter, cat.length || 200)
     };
@@ -462,7 +462,7 @@ export default function PurchaseView({
     const otherLogs = cat.logs.filter(l => l.diameter !== diameter);
     
     const newCountLogs: LogEntry[] = Array.from({ length: Math.max(0, count) }, () => ({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       diameter,
       volume: calculateVolume(diameter, cat.length || 200)
     }));
@@ -600,7 +600,7 @@ export default function PurchaseView({
                       if (!supplierFormData.name) return;
                       setIsSupplierSaving(true);
                       try {
-                        await onSaveSupplier({ ...supplierFormData, id: supplierFormData.id || crypto.randomUUID() });
+                        await onSaveSupplier({ ...supplierFormData, id: supplierFormData.id || generateUUID() });
                         setSupplierFormData({ id: '', name: '', phone: '', address: '' });
                         showToast('Penyetor berhasil disimpan!');
                       } catch (error) {

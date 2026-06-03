@@ -66,7 +66,7 @@ const ForgotPasswordView = lazyWithRetry(
 const ConfirmationModal = lazyWithRetry(
   () => import("./components/ConfirmationModal"),
 );
-import { cn } from "./lib/utils";
+import { cn, generateUUID } from "./lib/utils";
 
 type ViewType =
   | "dashboard"
@@ -171,7 +171,7 @@ export default function App() {
     title: "",
     message: "",
     variant: "info",
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   const [toast, setToast] = useState<{
@@ -222,7 +222,7 @@ export default function App() {
 
   const createNewSet = useCallback(() => {
     const newSet: WoodSet = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       supplierName: "",
       date: (() => {
         const d = new Date();

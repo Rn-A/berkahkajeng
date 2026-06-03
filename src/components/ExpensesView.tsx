@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CreditCard, Plus, Search, Calendar, DollarSign, X, Save, FileText, Download, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Expense } from '../types';
-import { cn } from '../lib/utils';
+import { cn, generateUUID } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface ExpensesViewProps {
@@ -115,7 +115,7 @@ export default function ExpensesView({ expenses, onSave, onDelete }: ExpensesVie
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSave({ ...formData, id: isEditing ? formData.id : crypto.randomUUID() });
+    await onSave({ ...formData, id: isEditing ? formData.id : generateUUID() });
     resetForm();
   };
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { UserCheck, Plus, Search, Phone, MapPin, X, Save, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Customer } from '../types';
-import { cn } from '../lib/utils';
+import { cn, generateUUID } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CustomersViewProps {
@@ -38,7 +38,7 @@ export default function CustomersView({ customers, onSave, onDelete }: Customers
 
   const handleAdd = () => {
     setEditingId(null);
-    setFormData({ id: crypto.randomUUID(), name: '', phone: '', address: '' });
+    setFormData({ id: generateUUID(), name: '', phone: '', address: '' });
     setShowForm(true);
   };
 

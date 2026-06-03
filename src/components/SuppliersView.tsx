@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Users, Plus, Search, Phone, MapPin, X, Save, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Supplier } from '../types';
-import { cn } from '../lib/utils';
+import { cn, generateUUID } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SuppliersViewProps {
@@ -38,7 +38,7 @@ export default function SuppliersView({ suppliers, onSave, onDelete }: Suppliers
 
   const handleAdd = () => {
     setEditingId(null);
-    setFormData({ id: crypto.randomUUID(), name: '', phone: '', address: '' });
+    setFormData({ id: generateUUID(), name: '', phone: '', address: '' });
     setShowForm(true);
   };
 

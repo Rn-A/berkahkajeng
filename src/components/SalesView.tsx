@@ -21,7 +21,7 @@ import {
   ChevronLeft
 } from 'lucide-react';
 import { InventoryItem, Sale, SaleItem, Customer } from '../types';
-import { cn, roundPrice } from '../lib/utils';
+import { cn, roundPrice, generateUUID } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SalesViewProps {
@@ -316,7 +316,7 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
 
   const addItem = () => {
     setSaleItems([...saleItems, {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       wood_type: '',
       diameter_group: '',
       length: 0,
@@ -390,7 +390,7 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
     setIsLoading(true);
     try {
       await onSave({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         customer_name: customerName,
         date: saleDate,
         items: saleItems
