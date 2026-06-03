@@ -354,8 +354,41 @@ export async function initDB() {
 
 // Start DB init immediately
 initDB().catch((err) => console.error("Immediate DB Init Error:", err));
-// Diameter grouping helper
-function getDiameterGroup(diameter: number): string {
+// Diameter grouping helper matching purchase categorization rules
+function getDiameterGroup(diameter: number, condition: string, length: number): string {
+  if (condition === "X" || diameter < 10) return "X";
+  if (condition === "Kerab") return "Bebas";
+  
+  if (condition === "Rijelk") {
+    if (diameter >= 10 && diameter <= 14) return "10-14";
+    if (diameter >= 15 && diameter <= 19) return "15-19";
+    return "10-19";
+  }
+  
+  if (condition === "Super kecil") {
+    return "15-19";
+  }
+
+  if (condition === "C/Standar") {
+    if (diameter >= 20 && diameter <= 24) return "20-24";
+    if (diameter >= 25 && diameter <= 29) return "25-29";
+    return "30+";
+  }
+
+  if (condition === "Super") {
+    if (length === 100 || length === 130) {
+      if (diameter >= 20 && diameter <= 24) return "20-24";
+      if (diameter >= 25) return "25up";
+    } else { // 200 or 260
+      if (diameter >= 20 && diameter <= 24) return "20-24";
+      if (diameter >= 25 && diameter <= 29) return "25-29";
+      if (diameter >= 30 && diameter <= 39) return "30-39";
+      if (diameter >= 40 && diameter <= 49) return "40-49";
+      if (diameter >= 50) return "50up";
+    }
+  }
+
+  // Fallback to standard grouping
   if (diameter < 15) return "10-14";
   if (diameter < 20) return "15-19";
   if (diameter < 25) return "20-24";
@@ -907,7 +940,7 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
           { count: number; volume: number; value: number }
         > = {};
         for (const log of oldLogs) {
-          const group = getDiameterGroup(log.diameter);
+          const group = getDiameterGroup(log.diameter, cat.condition_val, cat.length);
           if (!oldGroups[group])
             oldGroups[group] = { count: 0, volume: 0, value: 0 };
 
@@ -1000,7 +1033,7 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
 
       for (const log of cat.logs) {
         logValues.push([log.id, cat.id, log.diameter, log.volume]);
-        const group = getDiameterGroup(log.diameter);
+        const group = getDiameterGroup(log.diameter, cat.condition, cat.length);
         if (!logGroups[group])
           logGroups[group] = { count: 0, volume: 0, value: 0 };
 
@@ -1088,7 +1121,7 @@ apiRouter.delete("/sets/:id", authenticateToken, async (req, res) => {
         { count: number; volume: number; value: number }
       > = {};
       for (const log of logs) {
-        const group = getDiameterGroup(log.diameter);
+        const group = getDiameterGroup(log.diameter, cat.condition_val, cat.length);
         if (!logGroups[group])
           logGroups[group] = { count: 0, volume: 0, value: 0 };
 
