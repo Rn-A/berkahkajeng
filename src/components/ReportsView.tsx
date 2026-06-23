@@ -265,7 +265,7 @@ export default function ReportsView({
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform text-orange-500">
             <ShoppingCart size={64} />
           </div>
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">HPP (Modal Kayu)</p>
+          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Total Pembelian</p>
           <h3 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">{financialSummary.totalPurchaseVolume.toFixed(2)} <span className="text-xs font-bold text-zinc-400">m³</span></h3>
           <div className="mt-4 space-y-1">
             <p className="text-sm font-bold text-zinc-900 dark:text-white">{formatCurrency(financialSummary.totalPurchaseValue)}</p>
