@@ -55,27 +55,89 @@ export default function InventoryView({ inventory }: InventoryViewProps) {
   const exportToCSV = () => {
     if (filteredInventory.length === 0) return;
     
-    // Wrap value in double-quotes to prevent Excel from auto-interpreting
-    // values like "10-14" as dates ("14-Oct")
     const csvEscape = (val: any): string => {
       const str = String(val ?? '');
       return `"${str.replace(/"/g, '""')}"`;
     };
 
-    const headers = ['Jenis Kayu', 'Diameter (cm)', 'Panjang (cm)', 'Kondisi', 'Jumlah Batang', 'Total Volume (m3)', 'Harga Rata-rata (Rp)', 'Total Nilai (Rp)'];
-    const rows = filteredInventory.map(item => [
-      csvEscape(item.wood_type),
-      csvEscape(item.diameter_group),
-      csvEscape(Number(item.length) === 0 ? 'Bebas' : item.length),
-      csvEscape(item.condition_val || 'Umum'),
-      csvEscape(item.total_logs),
-      csvEscape(Number(item.total_volume).toFixed(3)),
-      csvEscape(roundPrice(Number(item.avg_price))),
-      csvEscape(roundPrice(Number(item.total_value)))
-    ]);
+    const todayStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
 
-    const csvContent = [headers.map(h => csvEscape(h)), ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const titleRows = [
+      [csvEscape('LAPORAN DATA INVENTARIS STOK - BERKAH KAJENG')],
+      [csvEscape('Tanggal Ekspor'), csvEscape(todayStr)],
+      [csvEscape('Filter Jenis Kayu'), csvEscape(filterType === 'Semua' ? 'Semua Jenis Kayu' : filterType)],
+      [csvEscape('Total Baris Data'), csvEscape(filteredInventory.length)],
+      []
+    ];
+
+    const headers = [
+      'No', 
+      'Jenis Kayu', 
+      'Diameter', 
+      'Panjang', 
+      'Kondisi', 
+      'Jumlah Batang', 
+      'Total Volume', 
+      'Harga Rata-rata / Satuan', 
+      'Total Nilai Aset'
+    ];
+
+    let totalLogs = 0;
+    let totalVolume = 0;
+    let totalValue = 0;
+
+    const rows = filteredInventory.map((item, idx) => {
+      const logs = Number(item.total_logs);
+      const volume = Number(item.total_volume);
+      const value = roundPrice(Number(item.total_value));
+      const avgPrice = roundPrice(Number(item.avg_price));
+      
+      totalLogs += logs;
+      totalVolume += volume;
+      totalValue += value;
+
+      const isX = item.condition_val === 'X' || item.diameter_group === 'X' || item.diameter_group === '<10';
+      const priceUnit = isX ? '/ Btg' : '/ m³';
+
+      return [
+        csvEscape(idx + 1),
+        csvEscape(item.wood_type),
+        csvEscape(item.diameter_group === 'X' ? 'Bebas' : `${item.diameter_group} cm`),
+        csvEscape(Number(item.length) === 0 ? 'Bebas' : `${item.length} cm`),
+        csvEscape(item.condition_val || 'Umum'),
+        csvEscape(`${logs} Btg`),
+        csvEscape(`${volume.toFixed(3)} m³`),
+        csvEscape(`${formatCurrency(avgPrice)} ${priceUnit}`),
+        csvEscape(formatCurrency(value))
+      ];
+    });
+
+    const summaryRow = [
+      csvEscape('TOTAL ASET INVENTARIS'),
+      csvEscape(''),
+      csvEscape(''),
+      csvEscape(''),
+      csvEscape(''),
+      csvEscape(`${totalLogs} Btg`),
+      csvEscape(`${totalVolume.toFixed(3)} m³`),
+      csvEscape(''),
+      csvEscape(formatCurrency(totalValue))
+    ];
+
+    const allRows = [
+      ...titleRows,
+      headers.map(h => csvEscape(h)),
+      ...rows,
+      summaryRow
+    ];
+
+    const csvContent = allRows.map(e => e.join(",")).join("\n");
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);

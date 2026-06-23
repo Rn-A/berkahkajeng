@@ -123,17 +123,54 @@ export default function ReportsView({
   }, [inventory, filteredData]);
 
   const exportToCSV = () => {
-    const headers = ['Kategori', 'Nilai (Rp)'];
-    const rows = [
+    const csvEscape = (val: any): string => {
+      const str = String(val ?? '');
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    const todayStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    const periodLabel = 
+      period === 'daily' ? 'Hari Ini' :
+      period === 'weekly' ? 'Minggu Ini' :
+      period === 'monthly' ? 'Bulan Ini' :
+      period === 'yearly' ? 'Tahun Ini' : 'Semua Waktu';
+
+    const titleRows = [
+      [csvEscape('LAPORAN RINGKASAN KEUANGAN - BERKAH KAJENG')],
+      [csvEscape('Tanggal Ekspor'), csvEscape(todayStr)],
+      [csvEscape('Periode Laporan'), csvEscape(periodLabel)],
+      []
+    ];
+
+    const headers = ['No', 'Kategori Keuangan', 'Nilai Rupiah'];
+    const dataRows = [
       ['Total Penjualan', financialSummary.totalRevenue],
       ['Total Pembelian', financialSummary.totalPurchaseValue],
       ['Total Pengeluaran Operasional', financialSummary.totalExpenses],
-      ['Laba Bersih', financialSummary.totalProfit],
-      ['Nilai Aset Stok', financialSummary.totalInventoryValue]
+      ['Laba Bersih (Estimasi)', financialSummary.totalProfit],
+      ['Nilai Aset Stok (Estimasi)', financialSummary.totalInventoryValue]
     ];
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const rows = dataRows.map((row, idx) => [
+      csvEscape(idx + 1),
+      csvEscape(row[0]),
+      csvEscape(formatCurrency(Number(row[1])))
+    ]);
+
+    const allRows = [
+      ...titleRows,
+      headers.map(h => csvEscape(h)),
+      ...rows
+    ];
+
+    const csvContent = allRows.map(e => e.join(",")).join("\n");
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);

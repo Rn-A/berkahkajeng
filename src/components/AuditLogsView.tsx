@@ -67,16 +67,49 @@ export default function AuditLogsView({ logs }: AuditLogsViewProps) {
   const exportToCSV = () => {
     if (filteredLogs.length === 0) return;
     
-    const headers = ['Waktu', 'Pengguna', 'Aksi', 'Detail'];
-    const rows = filteredLogs.map(log => [
-      new Date(log.created_at).toLocaleString('id-ID'),
-      log.username,
-      log.action,
-      log.details
+    const csvEscape = (val: any): string => {
+      const str = String(val ?? '');
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    const todayStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    const periodLabel = 
+      period === 'hari' ? 'Hari Ini' :
+      period === 'minggu' ? 'Minggu Ini' :
+      period === 'bulan' ? 'Bulan Ini' :
+      period === 'tahun' ? 'Tahun Ini' : 'Semua Waktu';
+
+    const titleRows = [
+      [csvEscape('LAPORAN LOG AKTIVITAS SISTEM - BERKAH KAJENG')],
+      [csvEscape('Tanggal Ekspor'), csvEscape(todayStr)],
+      [csvEscape('Periode Laporan'), csvEscape(periodLabel)],
+      [csvEscape('Total Catatan Log'), csvEscape(filteredLogs.length)],
+      []
+    ];
+
+    const headers = ['No', 'Waktu Aktivitas', 'Nama Pengguna', 'Aksi / Fitur', 'Detail Aktivitas'];
+    const rows = filteredLogs.map((log, idx) => [
+      csvEscape(idx + 1),
+      csvEscape(new Date(log.created_at).toLocaleString('id-ID')),
+      csvEscape(log.username),
+      csvEscape(log.action),
+      csvEscape(log.details)
     ]);
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const allRows = [
+      ...titleRows,
+      headers.map(h => csvEscape(h)),
+      ...rows
+    ];
+
+    const csvContent = allRows.map(e => e.join(",")).join("\n");
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);

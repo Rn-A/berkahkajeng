@@ -91,16 +91,62 @@ export default function ExpensesView({ expenses, onSave, onDelete }: ExpensesVie
   const exportToCSV = () => {
     if (filteredExpenses.length === 0) return;
 
-    const headers = ['Tanggal', 'Kategori', 'Deskripsi', 'Jumlah (Rp)'];
-    const rows = filteredExpenses.map(e => [
-      e.date,
-      e.category,
-      e.description,
-      e.amount
-    ]);
+    const csvEscape = (val: any): string => {
+      const str = String(val ?? '');
+      return `"${str.replace(/"/g, '""')}"`;
+    };
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    // Tambahkan BOM agar Excel membaca encoding UTF-8 dengan benar
+    const todayStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    const periodLabel = 
+      period === 'hari' ? 'Hari Ini' :
+      period === 'minggu' ? 'Minggu Ini' :
+      period === 'bulan' ? 'Bulan Ini' :
+      period === 'tahun' ? 'Tahun Ini' : 'Semua Waktu';
+
+    const titleRows = [
+      [csvEscape('LAPORAN PENGELUARAN OPERASIONAL - BERKAH KAJENG')],
+      [csvEscape('Tanggal Ekspor'), csvEscape(todayStr)],
+      [csvEscape('Periode Laporan'), csvEscape(periodLabel)],
+      [csvEscape('Total Catatan'), csvEscape(filteredExpenses.length)],
+      []
+    ];
+
+    const headers = ['No', 'Tanggal', 'Kategori', 'Deskripsi', 'Jumlah Pengeluaran'];
+    
+    let totalExpenses = 0;
+
+    const rows = filteredExpenses.map((e, idx) => {
+      totalExpenses += e.amount;
+      return [
+        csvEscape(idx + 1),
+        csvEscape(e.date),
+        csvEscape(e.category),
+        csvEscape(e.description),
+        csvEscape(formatCurrency(e.amount))
+      ];
+    });
+
+    const summaryRow = [
+      csvEscape('TOTAL PENGELUARAN'),
+      csvEscape(''),
+      csvEscape(''),
+      csvEscape(''),
+      csvEscape(formatCurrency(totalExpenses))
+    ];
+
+    const allRows = [
+      ...titleRows,
+      headers.map(h => csvEscape(h)),
+      ...rows,
+      summaryRow
+    ];
+
+    const csvContent = allRows.map(row => row.join(",")).join("\n");
     const BOM = '\uFEFF';
     const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");

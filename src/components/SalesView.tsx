@@ -290,18 +290,68 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
   const currentItems = filteredHistory.slice(indexOfFirstItem, indexOfLastItem);
 
   const exportToCSV = () => {
-    if (salesHistory.length === 0) return;
+    if (filteredHistory.length === 0) return;
 
-    const headers = ['ID', 'Tanggal', 'Pelanggan', 'Total Pendapatan (Rp)', 'Total Laba (Rp)'];
-    const rows = salesHistory.map(sale => [
-      sale.id,
-      sale.date,
-      sale.customer_name,
-      sale.total_revenue,
-      sale.total_profit
-    ]);
+    const csvEscape = (val: any): string => {
+      const str = String(val ?? '');
+      return `"${str.replace(/"/g, '""')}"`;
+    };
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const todayStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    const periodLabel = 
+      period === 'hari' ? 'Hari Ini' :
+      period === 'minggu' ? 'Minggu Ini' :
+      period === 'bulan' ? 'Bulan Ini' :
+      period === 'tahun' ? 'Tahun Ini' : 'Semua Waktu';
+
+    const titleRows = [
+      [csvEscape('LAPORAN RIWAYAT PENJUALAN - BERKAH KAJENG')],
+      [csvEscape('Tanggal Ekspor'), csvEscape(todayStr)],
+      [csvEscape('Periode Laporan'), csvEscape(periodLabel)],
+      [csvEscape('Total Transaksi'), csvEscape(filteredHistory.length)],
+      []
+    ];
+
+    const headers = ['No', 'ID Transaksi', 'Tanggal', 'Nama Pelanggan', 'Total Pendapatan', 'Total Estimasi Laba'];
+    
+    let totalRevenue = 0;
+    let totalProfit = 0;
+
+    const rows = filteredHistory.map((sale, idx) => {
+      totalRevenue += sale.total_revenue;
+      totalProfit += sale.total_profit;
+      return [
+        csvEscape(idx + 1),
+        csvEscape(sale.id),
+        csvEscape(sale.date),
+        csvEscape(sale.customer_name),
+        csvEscape(formatCurrency(sale.total_revenue)),
+        csvEscape(formatCurrency(sale.total_profit))
+      ];
+    });
+
+    const summaryRow = [
+      csvEscape('TOTAL PENJUALAN'),
+      csvEscape(''),
+      csvEscape(''),
+      csvEscape(''),
+      csvEscape(formatCurrency(totalRevenue)),
+      csvEscape(formatCurrency(totalProfit))
+    ];
+
+    const allRows = [
+      ...titleRows,
+      headers.map(h => csvEscape(h)),
+      ...rows,
+      summaryRow
+    ];
+
+    const csvContent = allRows.map(e => e.join(",")).join("\n");
     const BOM = '\uFEFF';
     const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");

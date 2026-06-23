@@ -268,15 +268,62 @@ export default function PurchaseView({
   };
 
   const exportToCSV = () => {
-    if (history.length === 0) return;
+    if (filteredHistory.length === 0) return;
 
-    const headers = ['ID', 'Tanggal', 'Supplier', 'Total Volume (m3)', 'Total Harga (Rp)'];
-    const rows = history.map(set => {
-      const totals = calculateSetTotals(set);
-      return [set.id, set.date, set.supplierName, totals.volume.toFixed(4), totals.price];
+    const csvEscape = (val: any): string => {
+      const str = String(val ?? '');
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    const todayStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
     });
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const titleRows = [
+      [csvEscape('LAPORAN RIWAYAT PEMBELIAN - BERKAH KAJENG')],
+      [csvEscape('Tanggal Ekspor'), csvEscape(todayStr)],
+      [csvEscape('Total Transaksi'), csvEscape(filteredHistory.length)],
+      []
+    ];
+
+    const headers = ['No', 'ID Pembelian', 'Tanggal', 'Nama Supplier', 'Total Volume', 'Total Harga'];
+    
+    let totalVolume = 0;
+    let totalPrice = 0;
+
+    const rows = filteredHistory.map((set, idx) => {
+      const totals = calculateSetTotals(set);
+      totalVolume += totals.volume;
+      totalPrice += totals.price;
+      return [
+        csvEscape(idx + 1),
+        csvEscape(set.id),
+        csvEscape(set.date),
+        csvEscape(set.supplierName),
+        csvEscape(`${totals.volume.toFixed(4)} m³`),
+        csvEscape(formatCurrency(totals.price))
+      ];
+    });
+
+    const summaryRow = [
+      csvEscape('TOTAL PEMBELIAN'),
+      csvEscape(''),
+      csvEscape(''),
+      csvEscape(''),
+      csvEscape(`${totalVolume.toFixed(4)} m³`),
+      csvEscape(formatCurrency(totalPrice))
+    ];
+
+    const allRows = [
+      ...titleRows,
+      headers.map(h => csvEscape(h)),
+      ...rows,
+      summaryRow
+    ];
+
+    const csvContent = allRows.map(e => e.join(",")).join("\n");
     const BOM = '\uFEFF';
     const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
