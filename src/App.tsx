@@ -1056,6 +1056,7 @@ export default function App() {
                       onSaveSupplier={handleSaveSupplier}
                       onDeleteSupplier={handleDeleteSupplier}
                       userRole={auth.user?.role || "mandor"}
+                      currentUser={auth.user}
                     />
                   )}
                   {activeView === "inventory" && (

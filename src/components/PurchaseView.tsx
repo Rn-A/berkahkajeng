@@ -46,6 +46,7 @@ interface PurchaseViewProps {
   onSaveSupplier: (supplier: Supplier) => Promise<void>;
   onDeleteSupplier: (id: string) => Promise<void>;
   userRole?: string;
+  currentUser?: { full_name: string; username: string } | null;
 }
 
 const calculateVolume = (diameterCm: number, lengthCm: number): number => {
@@ -191,7 +192,8 @@ export default function PurchaseView({
   onDeleteWoodType,
   onSaveSupplier,
   onDeleteSupplier,
-  userRole = 'mandor'
+  userRole = 'mandor',
+  currentUser
 }: PurchaseViewProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [showTypeManager, setShowTypeManager] = useState(false);
@@ -1351,13 +1353,13 @@ export default function PurchaseView({
                 <div className="grid grid-cols-3 gap-8 pt-12 text-center text-[10px] uppercase font-bold">
                   <div className="space-y-12">
                     <p>Penyetor</p>
-                    <div className="border-t border-zinc-400 pt-1 mx-4">( .................... )</div>
+                    <div className="border-t border-zinc-400 pt-1 mx-4">( {activeSet?.supplierName || '....................'} )</div>
                   </div>
                   <div className="space-y-12">
                   </div>
                   <div className="space-y-12">
                     <p>Kasir</p>
-                    <div className="border-t border-zinc-400 pt-1 mx-4">( .................... )</div>
+                    <div className="border-t border-zinc-400 pt-1 mx-4">( {currentUser?.full_name || '....................'} )</div>
                   </div>
                 </div>
 
