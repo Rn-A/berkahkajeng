@@ -1828,9 +1828,10 @@ apiRouter.post("/users", authenticateToken, apiLimiter, async (req, res) => {
   if (dbConnected && pool) {
     try {
       const hashed = await bcrypt.hash(password, 10);
+      const emailVal = (email && email.trim() !== "") ? email.trim() : null;
       await pool!.query(
         "INSERT INTO users (username, password, role, full_name, email) VALUES (?, ?, 'mandor', ?, ?)",
-        [username, hashed, full_name, email],
+        [username, hashed, full_name, emailVal],
       );
       await logAudit(
         req.user.id,
@@ -1839,8 +1840,13 @@ apiRouter.post("/users", authenticateToken, apiLimiter, async (req, res) => {
       );
       res.status(201).json({ message: "User created" });
     } catch (e: any) {
-      if (e.code === "ER_DUP_ENTRY")
+      if (e.code === "ER_DUP_ENTRY") {
+        const msg = String(e.message || '');
+        if (msg.includes('email') || msg.includes('idx_user_email')) {
+          return res.status(400).json({ error: "Email sudah digunakan oleh akun lain" });
+        }
         return res.status(400).json({ error: "Username sudah digunakan" });
+      }
       res.status(500).json({ error: e.message });
     }
   } else {
@@ -1856,11 +1862,12 @@ apiRouter.put("/users/:id", authenticateToken, async (req, res) => {
 
   if (dbConnected && pool) {
     try {
+      const emailVal = (email && email.trim() !== "") ? email.trim() : null;
       if (password && password.trim() !== "") {
         const hashed = await bcrypt.hash(password, 10);
         await pool!.query(
           "UPDATE users SET username = ?, full_name = ?, email = ?, password = ? WHERE id = ? AND role = 'mandor'",
-          [username, full_name, email, hashed, id],
+          [username, full_name, emailVal, hashed, id],
         );
         await logAudit(
           req.user.id,
@@ -1870,7 +1877,7 @@ apiRouter.put("/users/:id", authenticateToken, async (req, res) => {
       } else {
         await pool!.query(
           "UPDATE users SET username = ?, full_name = ?, email = ? WHERE id = ? AND role = 'mandor'",
-          [username, full_name, email, id],
+          [username, full_name, emailVal, id],
         );
         await logAudit(
           req.user.id,
@@ -1880,8 +1887,13 @@ apiRouter.put("/users/:id", authenticateToken, async (req, res) => {
       }
       res.json({ message: "User updated" });
     } catch (e: any) {
-      if (e.code === "ER_DUP_ENTRY")
+      if (e.code === "ER_DUP_ENTRY") {
+        const msg = String(e.message || '');
+        if (msg.includes('email') || msg.includes('idx_user_email')) {
+          return res.status(400).json({ error: "Email sudah digunakan oleh akun lain" });
+        }
         return res.status(400).json({ error: "Username sudah digunakan" });
+      }
       res.status(500).json({ error: e.message });
     }
   } else {
@@ -1921,6 +1933,7 @@ apiRouter.put("/profile", authenticateToken, apiLimiter, async (req, res) => {
 
   if (dbConnected && pool) {
     try {
+      const emailVal = (email && email.trim() !== "") ? email.trim() : null;
       if (new_password && new_password.trim() !== "") {
         if (!current_password)
           return res
@@ -1956,7 +1969,7 @@ apiRouter.put("/profile", authenticateToken, apiLimiter, async (req, res) => {
         const hashed = await bcrypt.hash(new_password, 10);
         await pool!.query(
           "UPDATE users SET username = ?, full_name = ?, email = ?, password = ? WHERE id = ?",
-          [username, full_name, email, hashed, userId],
+          [username, full_name, emailVal, hashed, userId],
         );
         await logAudit(
           userId,
@@ -1966,7 +1979,7 @@ apiRouter.put("/profile", authenticateToken, apiLimiter, async (req, res) => {
       } else {
         await pool!.query(
           "UPDATE users SET username = ?, full_name = ?, email = ? WHERE id = ?",
-          [username, full_name, email, userId],
+          [username, full_name, emailVal, userId],
         );
         await logAudit(userId, "PROFILE_UPDATED", `Updated profile`);
       }
@@ -1990,8 +2003,13 @@ apiRouter.put("/profile", authenticateToken, apiLimiter, async (req, res) => {
         user: { ...updatedUser[0], token },
       });
     } catch (e: any) {
-      if (e.code === "ER_DUP_ENTRY")
+      if (e.code === "ER_DUP_ENTRY") {
+        const msg = String(e.message || '');
+        if (msg.includes('email') || msg.includes('idx_user_email')) {
+          return res.status(400).json({ error: "Email sudah digunakan oleh akun lain" });
+        }
         return res.status(400).json({ error: "Username sudah digunakan" });
+      }
       res.status(500).json({ error: e.message });
     }
   } else {
