@@ -261,10 +261,25 @@ export default function ReportsView({
           </div>
           <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">Laba Bersih</p>
           <h3 className="text-2xl font-black text-emerald-400 dark:text-emerald-600 tracking-tighter">{formatCurrency(financialSummary.totalProfit)}</h3>
-          <div className="mt-4">
-            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium italic">Estimasi profit bersih periode ini</p>
+          <div className="mt-3 space-y-1.5 border-t border-zinc-800 dark:border-zinc-200 pt-3">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Pendapatan Kotor</span>
+              <span className="text-[10px] text-emerald-400 dark:text-emerald-600 font-bold">{formatCurrency(financialSummary.totalRevenue)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">− HPP (Modal Kayu)</span>
+              <span className="text-[10px] text-orange-400 dark:text-orange-600 font-bold">{formatCurrency(financialSummary.totalCost)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">− Operasional</span>
+              <span className="text-[10px] text-red-400 dark:text-red-600 font-bold">{formatCurrency(financialSummary.totalExpenses)}</span>
+            </div>
+            <div className="border-t border-dashed border-zinc-700 dark:border-zinc-300 pt-1.5 flex justify-between items-center">
+              <span className="text-[10px] text-zinc-300 dark:text-zinc-600 font-bold">= Laba Bersih</span>
+              <span className={cn("text-[10px] font-black", financialSummary.totalProfit >= 0 ? "text-emerald-400 dark:text-emerald-600" : "text-red-400 dark:text-red-600")}>{formatCurrency(financialSummary.totalProfit)}</span>
+            </div>
           </div>
-          <div className="mt-4 flex items-center gap-1.5 text-emerald-400 dark:text-emerald-600 text-[10px] font-black uppercase tracking-wider">
+          <div className="mt-3 flex items-center gap-1.5 text-emerald-400 dark:text-emerald-600 text-[10px] font-black uppercase tracking-wider">
             <TrendingUp size={14} />
             Keuntungan Akhir
           </div>

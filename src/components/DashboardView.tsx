@@ -397,7 +397,8 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
       {
         label: 'Laba Bersih',
         value: formatCurrency(filteredStats.totalNetProfit),
-        subValue: 'Laba Penjualan - Pengeluaran',
+        subValue: `Laba Penjualan: ${formatCurrency(filteredStats.totalSalesProfit)}`,
+        subValue2: `− Pengeluaran: ${formatCurrency(filteredStats.totalExpenses)}`,
         icon: Activity,
         color: 'bg-emerald-600'
       }
