@@ -18,7 +18,8 @@ import {
   ChevronLeft,
   Edit2,
   Minus,
-  Plus as PlusIcon
+  Plus as PlusIcon,
+  Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -196,6 +197,7 @@ export default function PurchaseView({
   currentUser
 }: PurchaseViewProps) {
   const [showHistory, setShowHistory] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
   const [showTypeManager, setShowTypeManager] = useState(false);
   const [showSupplierManager, setShowSupplierManager] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
@@ -815,6 +817,17 @@ export default function PurchaseView({
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Info Aturan Kategori */}
+        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+          <button
+            onClick={() => setShowRulesModal(true)}
+            className="w-full flex items-center justify-center gap-2 p-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 transition-all active:scale-95 shadow-sm"
+          >
+            <Info size={14} className="text-zinc-500" />
+            Petunjuk Ketentuan Kategori
+          </button>
         </div>
       </div>
 
@@ -1497,6 +1510,124 @@ export default function PurchaseView({
             </div>
           )}
         </AnimatePresence>,
+        document.body
+      )}
+
+      {/* Rules Modal */}
+      {showRulesModal && createPortal(
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 md:p-6">
+          <div onClick={() => setShowRulesModal(false)} className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" />
+          <div className="relative w-full max-w-3xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-900 text-white">
+              <div className="flex items-center gap-3">
+                <Info size={22} className="text-emerald-400" />
+                <h2 className="text-base md:text-lg font-bold">Panduan Ketentuan Kategori Kayu</h2>
+              </div>
+              <button onClick={() => setShowRulesModal(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <X size={20} className="text-white" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 dark:bg-zinc-950">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Berikut adalah tabel pedoman ketentuan diameter, panjang, dan kondisi untuk pengelompokan kategori kayu secara otomatis di sistem Berkah Kajeng:
+              </p>
+              
+              <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold border-b border-zinc-200 dark:border-zinc-800">
+                      <th className="p-3">Kondisi / Grade</th>
+                      <th className="p-3">Ketentuan Panjang</th>
+                      <th className="p-3">Ketentuan Diameter</th>
+                      <th className="p-3">Nama Kategori Terbentuk</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-600 dark:text-zinc-400">
+                    <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30">
+                      <td className="p-3 font-bold text-zinc-900 dark:text-white">X</td>
+                      <td className="p-3">100 cm atau 130 cm</td>
+                      <td className="p-3">&lt; 10 cm</td>
+                      <td className="p-3">X</td>
+                    </tr>
+                    <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30">
+                      <td className="p-3 font-bold text-zinc-900 dark:text-white" rowSpan={2}>Rijelk</td>
+                      <td className="p-3" rowSpan={2}>100 cm atau 130 cm</td>
+                      <td className="p-3">10 - 14 cm</td>
+                      <td className="p-3">Rijelk 1</td>
+                    </tr>
+                    <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30">
+                      <td className="p-3">15 - 19 cm</td>
+                      <td className="p-3">Rijelk 2</td>
+                    </tr>
+                    <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30">
+                      <td className="p-3 font-bold text-zinc-900 dark:text-white">Super kecil</td>
+                      <td className="p-3">100 cm atau 130 cm</td>
+                      <td className="p-3">15 - 19 cm</td>
+                      <td className="p-3">Super kecil</td>
+                    </tr>
+                    <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30">
+                      <td className="p-3 font-bold text-zinc-900 dark:text-white">C/Standar</td>
+                      <td className="p-3">100, 130, 200, atau 260 cm</td>
+                      <td className="p-3">&gt;= 20 cm</td>
+                      <td className="p-3">C/Standar [Panjang]</td>
+                    </tr>
+                    <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30">
+                      <td className="p-3 font-bold text-zinc-900 dark:text-white" rowSpan={4}>Super</td>
+                      <td className="p-3">100 cm atau 130 cm</td>
+                      <td className="p-3">
+                        • 20 - 24 cm<br />
+                        • &gt;= 25 cm (25up)
+                      </td>
+                      <td className="p-3">
+                        • Super [Panjang] (20-24)<br />
+                        • Super [Panjang] (25up)
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30">
+                      <td className="p-3" rowSpan={2}>200 cm atau 260 cm</td>
+                      <td className="p-3" rowSpan={2}>
+                        • 20 - 24 cm<br />
+                        • 25 - 29 cm<br />
+                        • 30 - 39 cm<br />
+                        • 40 - 49 cm<br />
+                        • &gt;= 50 cm (50up)
+                      </td>
+                      <td className="p-3" rowSpan={2}>
+                        • Super [Panjang] (20-24)<br />
+                        • Super [Panjang] (25-29)<br />
+                        • Super [Panjang] (30-39)<br />
+                        • Super [Panjang] (40-49)<br />
+                        • Super [Panjang] (50up)
+                      </td>
+                    </tr>
+                    <tr></tr>
+                    <tr></tr>
+                    <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30">
+                      <td className="p-3 font-bold text-zinc-900 dark:text-white">Kerab</td>
+                      <td className="p-3">Bebas (Semua ukuran)</td>
+                      <td className="p-3">Bebas (Semua ukuran)</td>
+                      <td className="p-3">Kerab</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-4 text-amber-800 dark:text-amber-300 text-xs space-y-1.5">
+                <span className="font-bold block">💡 Petunjuk Input:</span>
+                <p>
+                  Sistem secara otomatis mengelompokkan diameter kayu gelondongan yang Anda input ke dalam kategori yang tepat sesuai ketentuan di atas. Jika Anda menginput data yang tidak sesuai dengan kombinasi ketentuan panjang & diameter di atas, sistem akan menampilkan pesan peringatan dan menolak input tersebut untuk menjaga kebersihan data.
+                </p>
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-end">
+              <button onClick={() => setShowRulesModal(false)} className="bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 font-bold px-6 py-2.5 rounded-xl transition-all">
+                Tutup Panduan
+              </button>
+            </div>
+          </div>
+        </div>,
         document.body
       )}
     </div>
