@@ -112,7 +112,7 @@ export const determineWoodCategory = (condition: WoodCondition, length: number, 
   if (condition === 'Kerab') return `Kerab`;
 
   if (diameter < 10 || condition === 'X') {
-    if (diameter < 10 && (length === 100 || length === 130)) return `X`;
+    if (condition === 'X' && diameter < 10 && (length === 100 || length === 130)) return `X`;
     return null;
   }
 
@@ -926,6 +926,12 @@ export default function PurchaseView({
                               setErrorMessage(`Kondisi: ${cat.condition}\nPanjang: ${len} cm\n\nKombinasi panjang dan kondisi ini tidak diperbolehkan.\n\nKetentuan untuk Kondisi ${cat.condition}:\n${ruleInfo}`);
                               return;
                             }
+                            // Check if all existing logs are valid under the new length
+                            const invalidLog = cat.logs.find(log => !determineWoodCategory(cat.condition, len, log.diameter));
+                            if (invalidLog) {
+                              setErrorMessage(`Gagal mengubah panjang menjadi ${len} cm karena terdapat batang dengan diameter ${invalidLog.diameter} cm yang tidak valid untuk kombinasi ini.`);
+                              return;
+                            }
                             const repDiameter = cat.logs[0]?.diameter ?? 20;
                             const newName = cat.condition === 'X'
                               ? 'X'
@@ -968,22 +974,25 @@ export default function PurchaseView({
                           const cat = activeSet?.categories.find(c => c.id === selectedCategoryId);
                           if (cat) {
                             if (isValidConditionAndLength(cat.condition, len)) {
-                              const repDiameter = cat.logs[0]?.diameter ?? 20;
-                              const newName = cat.condition === 'X'
-                                ? 'X'
-                                : (determineWoodCategory(cat.condition, len, repDiameter) || `${cat.woodType} ${cat.length}cm`);
-                              
-                              // Recalculate volume of all logs using the new length
-                              const updatedLogs = cat.logs.map(log => ({
-                                ...log,
-                                volume: calculateVolume(log.diameter, len)
-                              }));
-                              
-                              updateCategory(selectedCategoryId, { 
-                                length: len, 
-                                name: newName,
-                                logs: updatedLogs
-                              });
+                              const allLogsValid = cat.logs.every(log => !!determineWoodCategory(cat.condition, len, log.diameter));
+                              if (allLogsValid) {
+                                const repDiameter = cat.logs[0]?.diameter ?? 20;
+                                const newName = cat.condition === 'X'
+                                  ? 'X'
+                                  : (determineWoodCategory(cat.condition, len, repDiameter) || `${cat.woodType} ${cat.length}cm`);
+                                
+                                // Recalculate volume of all logs using the new length
+                                const updatedLogs = cat.logs.map(log => ({
+                                  ...log,
+                                  volume: calculateVolume(log.diameter, len)
+                                }));
+                                
+                                updateCategory(selectedCategoryId, { 
+                                  length: len, 
+                                  name: newName,
+                                  logs: updatedLogs
+                                });
+                              }
                             }
                           }
                         }
@@ -991,10 +1000,18 @@ export default function PurchaseView({
                       onBlur={() => {
                         if (selectedCategoryId) {
                           const cat = activeSet?.categories.find(c => c.id === selectedCategoryId);
-                          if (cat && !isValidConditionAndLength(cat.condition, sessionLength)) {
-                            const ruleInfo = getCategoryRuleInfo(cat.condition);
-                            setErrorMessage(`Kondisi: ${cat.condition}\nPanjang: ${sessionLength} cm\n\nKombinasi panjang dan kondisi ini tidak diperbolehkan.\n\nKetentuan untuk Kondisi ${cat.condition}:\n${ruleInfo}`);
-                            setSessionLength(cat.length);
+                          if (cat) {
+                            if (!isValidConditionAndLength(cat.condition, sessionLength)) {
+                              const ruleInfo = getCategoryRuleInfo(cat.condition);
+                              setErrorMessage(`Kondisi: ${cat.condition}\nPanjang: ${sessionLength} cm\n\nKombinasi panjang dan kondisi ini tidak diperbolehkan.\n\nKetentuan untuk Kondisi ${cat.condition}:\n${ruleInfo}`);
+                              setSessionLength(cat.length);
+                              return;
+                            }
+                            const invalidLog = cat.logs.find(log => !determineWoodCategory(cat.condition, sessionLength, log.diameter));
+                            if (invalidLog) {
+                              setErrorMessage(`Gagal mengubah panjang menjadi ${sessionLength} cm karena terdapat batang dengan diameter ${invalidLog.diameter} cm yang tidak valid untuk kombinasi ini.`);
+                              setSessionLength(cat.length);
+                            }
                           }
                         }
                       }}
@@ -1015,6 +1032,12 @@ export default function PurchaseView({
                             if (!isValidConditionAndLength(grade, cat.length)) {
                               const ruleInfo = getCategoryRuleInfo(grade);
                               setErrorMessage(`Kondisi: ${grade}\nPanjang: ${cat.length} cm\n\nKombinasi panjang dan kondisi ini tidak diperbolehkan.\n\nKetentuan untuk Kondisi ${grade}:\n${ruleInfo}`);
+                              return;
+                            }
+                            // Check if all existing logs are valid under the new grade
+                            const invalidLog = cat.logs.find(log => !determineWoodCategory(grade, cat.length, log.diameter));
+                            if (invalidLog) {
+                              setErrorMessage(`Gagal mengubah kondisi menjadi ${grade} karena terdapat batang dengan diameter ${invalidLog.diameter} cm yang tidak valid untuk kondisi ini.`);
                               return;
                             }
                             const repDiameter = cat.logs[0]?.diameter ?? 20;
