@@ -94,6 +94,20 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
+export const isValidConditionAndLength = (condition: WoodCondition, length: number): boolean => {
+  if (condition === 'Kerab') return true;
+  if (condition === 'X') {
+    return length === 0 || length === 100 || length === 130;
+  }
+  if (condition === 'Rijelk' || condition === 'Super kecil') {
+    return length === 100 || length === 130;
+  }
+  if (condition === 'C/Standar' || condition === 'Super') {
+    return length === 100 || length === 130 || length === 200 || length === 260;
+  }
+  return false;
+};
+
 export const determineWoodCategory = (condition: WoodCondition, length: number, diameter: number): string | null => {
   if (condition === 'Kerab') return `Kerab`;
 
@@ -342,6 +356,13 @@ export default function PurchaseView({
 
   const addCategory = () => {
     if (!activeSet) return;
+
+    if (!isValidConditionAndLength(sessionCondition, sessionLength)) {
+      const ruleInfo = getCategoryRuleInfo(sessionCondition);
+      setErrorMessage(`Kondisi: ${sessionCondition}\nPanjang: ${sessionLength} cm\n\nKombinasi panjang dan kondisi ini tidak diperbolehkan.\n\nKetentuan untuk Kondisi ${sessionCondition}:\n${ruleInfo}`);
+      return;
+    }
+
     const name = sessionCondition === 'X' 
       ? 'X' 
       : (determineWoodCategory(sessionCondition, sessionLength, 20) || `${sessionWoodType} ${sessionLength}cm`);
@@ -382,6 +403,12 @@ export default function PurchaseView({
 
   const addLogAuto = (diameter: number) => {
     if (!activeSet) return;
+
+    if (!isValidConditionAndLength(sessionCondition, sessionLength)) {
+      const ruleInfo = getCategoryRuleInfo(sessionCondition);
+      setErrorMessage(`Kondisi Sket: ${sessionCondition}\nPanjang Sket: ${sessionLength} cm\n\nSetup Sket Anda saat ini tidak valid.\n\nKetentuan untuk Kondisi ${sessionCondition}:\n${ruleInfo}`);
+      return;
+    }
 
     if (diameter < 10) {
       const X_NAME = 'X';
@@ -891,10 +918,14 @@ export default function PurchaseView({
                     <button
                       key={len}
                       onClick={() => {
-                        setSessionLength(len);
                         if (selectedCategoryId) {
                           const cat = activeSet?.categories.find(c => c.id === selectedCategoryId);
                           if (cat) {
+                            if (!isValidConditionAndLength(cat.condition, len)) {
+                              const ruleInfo = getCategoryRuleInfo(cat.condition);
+                              setErrorMessage(`Kondisi: ${cat.condition}\nPanjang: ${len} cm\n\nKombinasi panjang dan kondisi ini tidak diperbolehkan.\n\nKetentuan untuk Kondisi ${cat.condition}:\n${ruleInfo}`);
+                              return;
+                            }
                             const repDiameter = cat.logs[0]?.diameter ?? 20;
                             const newName = cat.condition === 'X'
                               ? 'X'
@@ -913,6 +944,7 @@ export default function PurchaseView({
                             });
                           }
                         }
+                        setSessionLength(len);
                       }}
                       className={`px-2 py-1 text-[10px] font-bold rounded flex-1 min-w-[50px] transition-all active:scale-95 ${sessionLength === len
                         ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm'
@@ -935,22 +967,34 @@ export default function PurchaseView({
                         if (selectedCategoryId) {
                           const cat = activeSet?.categories.find(c => c.id === selectedCategoryId);
                           if (cat) {
-                            const repDiameter = cat.logs[0]?.diameter ?? 20;
-                            const newName = cat.condition === 'X'
-                              ? 'X'
-                              : (determineWoodCategory(cat.condition, len, repDiameter) || `${cat.woodType} ${len}cm`);
-                            
-                            // Recalculate volume of all logs using the new length
-                            const updatedLogs = cat.logs.map(log => ({
-                              ...log,
-                              volume: calculateVolume(log.diameter, len)
-                            }));
-                            
-                            updateCategory(selectedCategoryId, { 
-                              length: len, 
-                              name: newName,
-                              logs: updatedLogs
-                            });
+                            if (isValidConditionAndLength(cat.condition, len)) {
+                              const repDiameter = cat.logs[0]?.diameter ?? 20;
+                              const newName = cat.condition === 'X'
+                                ? 'X'
+                                : (determineWoodCategory(cat.condition, len, repDiameter) || `${cat.woodType} ${cat.length}cm`);
+                              
+                              // Recalculate volume of all logs using the new length
+                              const updatedLogs = cat.logs.map(log => ({
+                                ...log,
+                                volume: calculateVolume(log.diameter, len)
+                              }));
+                              
+                              updateCategory(selectedCategoryId, { 
+                                length: len, 
+                                name: newName,
+                                logs: updatedLogs
+                              });
+                            }
+                          }
+                        }
+                      }}
+                      onBlur={() => {
+                        if (selectedCategoryId) {
+                          const cat = activeSet?.categories.find(c => c.id === selectedCategoryId);
+                          if (cat && !isValidConditionAndLength(cat.condition, sessionLength)) {
+                            const ruleInfo = getCategoryRuleInfo(cat.condition);
+                            setErrorMessage(`Kondisi: ${cat.condition}\nPanjang: ${sessionLength} cm\n\nKombinasi panjang dan kondisi ini tidak diperbolehkan.\n\nKetentuan untuk Kondisi ${cat.condition}:\n${ruleInfo}`);
+                            setSessionLength(cat.length);
                           }
                         }
                       }}
@@ -965,10 +1009,14 @@ export default function PurchaseView({
                     <button
                       key={grade}
                       onClick={() => {
-                        setSessionCondition(grade);
                         if (selectedCategoryId) {
                           const cat = activeSet?.categories.find(c => c.id === selectedCategoryId);
                           if (cat) {
+                            if (!isValidConditionAndLength(grade, cat.length)) {
+                              const ruleInfo = getCategoryRuleInfo(grade);
+                              setErrorMessage(`Kondisi: ${grade}\nPanjang: ${cat.length} cm\n\nKombinasi panjang dan kondisi ini tidak diperbolehkan.\n\nKetentuan untuk Kondisi ${grade}:\n${ruleInfo}`);
+                              return;
+                            }
                             const repDiameter = cat.logs[0]?.diameter ?? 20;
                             const newName = grade === 'X'
                               ? 'X'
@@ -976,6 +1024,7 @@ export default function PurchaseView({
                             updateCategory(selectedCategoryId, { condition: grade, name: newName });
                           }
                         }
+                        setSessionCondition(grade);
                       }}
                       className={`px-2 py-1 text-[10px] font-bold rounded flex-1 min-w-[60px] transition-all active:scale-95 ${sessionCondition === grade
                         ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm'
