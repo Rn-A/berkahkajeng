@@ -141,31 +141,120 @@ export default function ReportsView({
       period === 'yearly' ? 'Tahun Ini' : 'Semua Waktu';
 
     const titleRows = [
-      [csvEscape('LAPORAN RINGKASAN KEUANGAN - BERKAH KAJENG')],
+      [csvEscape('LAPORAN KEUANGAN & TRANSAKSI - BERKAH KAJENG')],
       [csvEscape('Tanggal Ekspor'), csvEscape(todayStr)],
       [csvEscape('Periode Laporan'), csvEscape(periodLabel)],
       []
     ];
 
-    const headers = ['No', 'Kategori Keuangan', 'Nilai Rupiah'];
-    const dataRows = [
-      ['Total Penjualan', financialSummary.totalRevenue],
-      ['Total Pembelian', financialSummary.totalPurchaseValue],
-      ['Total Pengeluaran Operasional', financialSummary.totalExpenses],
-      ['Laba Bersih (Estimasi)', financialSummary.totalProfit],
-      ['Nilai Aset Stok (Estimasi)', financialSummary.totalInventoryValue]
+    // Section 1: Ringkasan Keuangan
+    const financialSummaryRows = [
+      [csvEscape('1. RINGKASAN KEUANGAN')],
+      [csvEscape('Kategori'), csvEscape('Detail'), csvEscape('Nilai')],
+      [csvEscape('Total Penjualan'), csvEscape('Volume'), csvEscape(`${financialSummary.totalSalesVolume.toFixed(2)} m³`)],
+      [csvEscape('Total Penjualan'), csvEscape('Nilai Penjualan (Pendapatan Kotor)'), csvEscape(formatCurrency(financialSummary.totalRevenue))],
+      [csvEscape('Total Penjualan'), csvEscape('Rerata Harga Jual'), csvEscape(`${formatCurrency(financialSummary.avgSalesPrice)}/m³`)],
+      [],
+      [csvEscape('Total Pembelian'), csvEscape('Volume'), csvEscape(`${financialSummary.totalPurchaseVolume.toFixed(2)} m³`)],
+      [csvEscape('Total Pembelian'), csvEscape('Nilai Pembelian'), csvEscape(formatCurrency(financialSummary.totalPurchaseValue))],
+      [csvEscape('Total Pembelian'), csvEscape('Rerata Harga Beli'), csvEscape(`${formatCurrency(financialSummary.avgPurchasePrice)}/m³`)],
+      [],
+      [csvEscape('Operasional'), csvEscape('Biaya Operasional'), csvEscape(formatCurrency(financialSummary.totalExpenses))],
+      [],
+      [csvEscape('Laba Bersih'), csvEscape('Pendapatan Kotor'), csvEscape(formatCurrency(financialSummary.totalRevenue))],
+      [csvEscape('Laba Bersih'), csvEscape('− HPP (Modal Kayu)'), csvEscape(formatCurrency(financialSummary.totalCost))],
+      [csvEscape('Laba Bersih'), csvEscape('− Operasional'), csvEscape(formatCurrency(financialSummary.totalExpenses))],
+      [csvEscape('Laba Bersih'), csvEscape('= Laba Bersih'), csvEscape(formatCurrency(financialSummary.totalProfit))],
+      [csvEscape('Nilai Aset Stok'), csvEscape('Estimasi Nilai Aset Stok'), csvEscape(formatCurrency(financialSummary.totalInventoryValue))],
+      []
     ];
 
-    const rows = dataRows.map((row, idx) => [
-      csvEscape(idx + 1),
-      csvEscape(row[0]),
-      csvEscape(formatCurrency(Number(row[1])))
+    // Section 2: Aliran Barang Masuk
+    const inboundHeader = [
+      [csvEscape('2. ALIRAN BARANG MASUK')],
+      [csvEscape('Tanggal'), csvEscape('Supplier'), csvEscape('Volume'), csvEscape('Total')]
+    ];
+    
+    const inboundRows = filteredData.purchases.map(p => [
+      csvEscape(p.date),
+      csvEscape(p.supplierName),
+      csvEscape(`${p.total_volume.toFixed(3)} m³`),
+      csvEscape(formatCurrency(roundPrice(p.total_value)))
     ]);
+    
+    const inboundTotalRow = [
+      csvEscape('TOTAL'),
+      csvEscape(`${filteredData.purchases.length} Transaksi`),
+      csvEscape(`${financialSummary.totalPurchaseVolume.toFixed(3)} m³`),
+      csvEscape(formatCurrency(financialSummary.totalPurchaseValue))
+    ];
+    
+    const inboundContent = inboundRows.length > 0 
+      ? [...inboundRows, inboundTotalRow]
+      : [[csvEscape('Tidak ada transaksi masuk di periode ini.'), '', '', '']];
+
+    // Section 3: Aliran Barang Keluar
+    const outboundHeader = [
+      [],
+      [csvEscape('3. ALIRAN BARANG KELUAR')],
+      [csvEscape('Tanggal'), csvEscape('Pelanggan'), csvEscape('Volume'), csvEscape('Pendapatan')]
+    ];
+    
+    const outboundRows = filteredData.sales.map(s => {
+      const vol = (s.items ?? []).reduce((acc, i) => acc + Number(i.volume || 0), 0);
+      return [
+        csvEscape(s.date),
+        csvEscape(s.customer_name),
+        csvEscape(`${vol.toFixed(3)} m³`),
+        csvEscape(formatCurrency(roundPrice(s.total_revenue)))
+      ];
+    });
+    
+    const outboundTotalRow = [
+      csvEscape('TOTAL'),
+      csvEscape(`${filteredData.sales.length} Transaksi`),
+      csvEscape(`${financialSummary.totalSalesVolume.toFixed(3)} m³`),
+      csvEscape(formatCurrency(financialSummary.totalRevenue))
+    ];
+    
+    const outboundContent = outboundRows.length > 0 
+      ? [...outboundRows, outboundTotalRow]
+      : [[csvEscape('Tidak ada transaksi keluar di periode ini.'), '', '', '']];
+
+    // Section 4: Rincian Pengeluaran Operasional
+    const expensesHeader = [
+      [],
+      [csvEscape('4. RINCIAN PENGELUARAN OPERASIONAL')],
+      [csvEscape('Tanggal'), csvEscape('Kategori'), csvEscape('Keterangan'), csvEscape('Jumlah')]
+    ];
+    
+    const expensesRows = filteredData.expenses.map(e => [
+      csvEscape(e.date),
+      csvEscape(e.category),
+      csvEscape(e.description || ''),
+      csvEscape(formatCurrency(roundPrice(e.amount)))
+    ]);
+    
+    const expensesTotalRow = [
+      csvEscape('TOTAL'),
+      csvEscape(''),
+      csvEscape(''),
+      csvEscape(formatCurrency(financialSummary.totalExpenses))
+    ];
+    
+    const expensesContent = expensesRows.length > 0 
+      ? [...expensesRows, expensesTotalRow]
+      : [[csvEscape('Belum ada pengeluaran di periode ini.'), '', '', '']];
 
     const allRows = [
       ...titleRows,
-      headers.map(h => csvEscape(h)),
-      ...rows
+      ...financialSummaryRows,
+      ...inboundHeader,
+      ...inboundContent,
+      ...outboundHeader,
+      ...outboundContent,
+      ...expensesHeader,
+      ...expensesContent
     ];
 
     const csvContent = allRows.map(e => e.join(",")).join("\n");
