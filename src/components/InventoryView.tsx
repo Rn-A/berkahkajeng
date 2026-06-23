@@ -44,7 +44,7 @@ export default function InventoryView({ inventory }: InventoryViewProps) {
   const groupedInventory = useMemo(() => {
     const groups: Record<string, InventoryItem[]> = {};
     filteredInventory.forEach(item => {
-      const lengthLabel = (item.condition_val === 'X' || Number(item.length) === 0) ? 'Bebas' : `${item.length} cm`;
+      const lengthLabel = Number(item.length) === 0 ? 'Bebas' : `${item.length} cm`;
       const key = `${item.wood_type} - ${lengthLabel} - ${item.condition_val || 'Umum'}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(item);
