@@ -44,7 +44,8 @@ export default function InventoryView({ inventory }: InventoryViewProps) {
   const groupedInventory = useMemo(() => {
     const groups: Record<string, InventoryItem[]> = {};
     filteredInventory.forEach(item => {
-      const key = `${item.wood_type} - ${item.length} cm - ${item.condition_val || 'Umum'}`;
+      const lengthLabel = (item.condition_val === 'X' || Number(item.length) === 0) ? 'Bebas' : `${item.length} cm`;
+      const key = `${item.wood_type} - ${lengthLabel} - ${item.condition_val || 'Umum'}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(item);
     });
@@ -54,18 +55,26 @@ export default function InventoryView({ inventory }: InventoryViewProps) {
   const exportToCSV = () => {
     if (filteredInventory.length === 0) return;
     
-    const headers = ['Jenis Kayu', 'Diameter (cm)', 'Panjang (cm)', 'Jumlah Batang', 'Total Volume (m3)', 'Harga Rata-rata (Rp)', 'Total Nilai (Rp)'];
+    // Wrap value in double-quotes to prevent Excel from auto-interpreting
+    // values like "10-14" as dates ("14-Oct")
+    const csvEscape = (val: any): string => {
+      const str = String(val ?? '');
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    const headers = ['Jenis Kayu', 'Diameter (cm)', 'Panjang (cm)', 'Kondisi', 'Jumlah Batang', 'Total Volume (m3)', 'Harga Rata-rata (Rp)', 'Total Nilai (Rp)'];
     const rows = filteredInventory.map(item => [
-      item.wood_type,
-      item.diameter_group,
-      item.length,
-      item.total_logs,
-      Number(item.total_volume).toFixed(3),
-      roundPrice(Number(item.avg_price)),
-      roundPrice(Number(item.total_value))
+      csvEscape(item.wood_type),
+      csvEscape(item.diameter_group),
+      csvEscape(Number(item.length) === 0 ? 'Bebas' : item.length),
+      csvEscape(item.condition_val || 'Umum'),
+      csvEscape(item.total_logs),
+      csvEscape(Number(item.total_volume).toFixed(3)),
+      csvEscape(roundPrice(Number(item.avg_price))),
+      csvEscape(roundPrice(Number(item.total_value)))
     ]);
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const csvContent = [headers.map(h => csvEscape(h)), ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
