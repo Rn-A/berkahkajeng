@@ -354,34 +354,6 @@ export default function PurchaseView({
     document.body.removeChild(link);
   };
 
-  const addCategory = () => {
-    if (!activeSet) return;
-
-    if (!isValidConditionAndLength(sessionCondition, sessionLength)) {
-      const ruleInfo = getCategoryRuleInfo(sessionCondition);
-      setErrorMessage(`Kondisi: ${sessionCondition}\nPanjang: ${sessionLength} cm\n\nKombinasi panjang dan kondisi ini tidak diperbolehkan.\n\nKetentuan untuk Kondisi ${sessionCondition}:\n${ruleInfo}`);
-      return;
-    }
-
-    const name = sessionCondition === 'X' 
-      ? 'X' 
-      : (determineWoodCategory(sessionCondition, sessionLength, 20) || `${sessionWoodType} ${sessionLength}cm`);
-    const newCategory: WoodCategory = {
-      id: generateUUID(),
-      name: name,
-      woodType: sessionWoodType,
-      length: sessionLength,
-      condition: sessionCondition,
-      pricePerM3: 0,
-      logs: []
-    };
-    setActiveSet({
-      ...activeSet,
-      categories: [...activeSet.categories, newCategory]
-    });
-    setSelectedCategoryId(newCategory.id);
-  };
-
   const updateCategory = (id: string, updates: Partial<WoodCategory>) => {
     if (!activeSet) return;
     setActiveSet({
@@ -790,9 +762,6 @@ export default function PurchaseView({
         <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[250px] lg:max-h-none">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Kategori Kayu</h2>
-            <button onClick={addCategory} className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-600 dark:text-zinc-400">
-              <PlusCircle size={20} />
-            </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
