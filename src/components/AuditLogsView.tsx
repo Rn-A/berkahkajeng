@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ShieldAlert, Search, Clock, User, Activity, Info, Download, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { AuditLog } from '../types';
-import { cn } from '../lib/utils';
+import { cn, formatPeriodDisplay } from '../lib/utils';
 
 interface AuditLogsViewProps {
   logs: AuditLog[];
@@ -17,6 +17,24 @@ export default function AuditLogsView({ logs }: AuditLogsViewProps) {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
+  const [showYearDropdown, setShowYearDropdown] = useState(false);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePeriodChange = (newPeriod: 'all' | 'hari' | 'minggu' | 'bulan' | 'tahun') => {
+    setPeriod(newPeriod);
+    setCurrentPage(1);
+    if (newPeriod === 'tahun') {
+      setShowYearDropdown(true);
+    } else if (newPeriod !== 'all') {
+      setTimeout(() => {
+        try {
+          dateInputRef.current?.showPicker();
+        } catch (e) {
+          console.error(e);
+        }
+      }, 50);
+    }
+  };
 
   const isWithinPeriod = (dateStr: string) => {
     if (!dateStr) return false;
@@ -132,7 +150,13 @@ export default function AuditLogsView({ logs }: AuditLogsViewProps) {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Audit Log Keamanan</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Audit Log Keamanan</h1>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/50 shadow-sm select-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Filter Aktif: {formatPeriodDisplay(selectedDate, period)}
+            </span>
+          </div>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">Pantau semua aktivitas pengguna di sistem.</p>
         </div>
       </div>
@@ -149,7 +173,7 @@ export default function AuditLogsView({ logs }: AuditLogsViewProps) {
             ].map(opt => (
               <button
                 key={opt.id}
-                onClick={() => { setPeriod(opt.id as any); setCurrentPage(1); }}
+                onClick={() => handlePeriodChange(opt.id as any)}
                 className={cn(
                   "px-3 py-1.5 text-[10px] font-black rounded-lg transition-all whitespace-nowrap uppercase",
                   period === opt.id 
@@ -164,14 +188,66 @@ export default function AuditLogsView({ logs }: AuditLogsViewProps) {
 
           <div className="flex items-center justify-between sm:justify-start gap-2 px-2 border-t sm:border-t-0 sm:border-l border-zinc-200 dark:border-zinc-700 pt-2 sm:pt-0 sm:ml-1">
             <span className="sm:hidden text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Pilih Tanggal:</span>
-            <div className="relative flex items-center pl-6">
+            <div className="relative flex items-center pl-6 min-w-[120px]">
               <Calendar size={14} className="absolute left-1 text-zinc-400 pointer-events-none" />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => { setSelectedDate(e.target.value); setCurrentPage(1); }}
-                className="bg-transparent border-none text-[10px] font-bold focus:ring-0 dark:text-white cursor-pointer w-full py-1 p-0"
-              />
+              
+              {period === 'tahun' ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowYearDropdown(!showYearDropdown)}
+                    className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 focus:outline-none select-none whitespace-nowrap"
+                  >
+                    {formatPeriodDisplay(selectedDate, period)}
+                  </button>
+                  {showYearDropdown && (
+                    <>
+                      <button
+                        onClick={() => setShowYearDropdown(false)}
+                        className="fixed inset-0 z-40 cursor-default focus:outline-none"
+                        aria-label="Tutup pilihan tahun"
+                      />
+                      <div className="absolute right-0 mt-6 py-1 w-24 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+                        {Array.from({ length: 11 }, (_, i) => 2020 + i).map(year => (
+                          <button
+                            key={year}
+                            onClick={() => {
+                              const [, m, d] = selectedDate.split('-');
+                              setSelectedDate(`${year}-${m || '01'}-${d || '01'}`);
+                              setShowYearDropdown(false);
+                            }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 font-bold"
+                          >
+                            {year}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <span className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 pointer-events-none select-none whitespace-nowrap">
+                    {formatPeriodDisplay(selectedDate, period)}
+                  </span>
+                  <input
+                    ref={dateInputRef}
+                    type={period === 'bulan' ? 'month' : 'date'}
+                    value={period === 'bulan' ? selectedDate.slice(0, 7) : selectedDate}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (period === 'bulan') {
+                        setSelectedDate(val ? `${val}-01` : selectedDate);
+                      } else {
+                        setSelectedDate(val || selectedDate);
+                      }
+                      setCurrentPage(1);
+                      if (period === 'all') setPeriod('hari');
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    style={{ opacity: 0, position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: 'pointer', minWidth: 0, minHeight: 0 }}
+                  />
+                </>
+              )}
             </div>
           </div>
         </div>

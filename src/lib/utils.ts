@@ -41,3 +41,62 @@ export function generateUUID(): string {
   });
 }
 
+export function formatPeriodDisplay(
+  dateStr: string,
+  period: 'all' | 'hari' | 'minggu' | 'bulan' | 'tahun' | 'daily' | 'weekly' | 'monthly' | 'yearly'
+): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+
+  const months = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+  const monthsShort = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+    'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+  ];
+
+  if (period === 'hari' || period === 'daily') {
+    return `${d.getDate()} ${monthsShort[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  if (period === 'minggu' || period === 'weekly') {
+    const start = new Date(d);
+    const day = start.getDay();
+    const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+    start.setDate(diff);
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+
+    const startDay = start.getDate();
+    const startMonth = monthsShort[start.getMonth()];
+    const startYear = start.getFullYear();
+
+    const endDay = end.getDate();
+    const endMonth = monthsShort[end.getMonth()];
+    const endYear = end.getFullYear();
+
+    if (startYear !== endYear) {
+      return `${startDay} ${startMonth} ${startYear} - ${endDay} ${endMonth} ${endYear}`;
+    }
+    if (startMonth !== endMonth) {
+      return `${startDay} ${startMonth} - ${endDay} ${endMonth} ${startYear}`;
+    }
+    return `${startDay} - ${endDay} ${startMonth} ${startYear}`;
+  }
+
+  if (period === 'bulan' || period === 'monthly') {
+    return `${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  if (period === 'tahun' || period === 'yearly') {
+    return `${d.getFullYear()}`;
+  }
+
+  return 'Semua Waktu';
+}
+
+
