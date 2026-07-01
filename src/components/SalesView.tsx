@@ -441,8 +441,10 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
     const uniqueCustomers = new Set<string>();
 
     filteredHistory.forEach(sale => {
-      totalRevenue += sale.total_revenue;
-      totalProfit += sale.total_profit;
+      const rev = Number(sale.total_revenue || 0);
+      const prof = Number(sale.total_profit || 0);
+      totalRevenue += rev;
+      totalProfit += prof;
       if (sale.customer_name) {
         uniqueCustomers.add(sale.customer_name);
       }
@@ -455,12 +457,14 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
     const customerRecapMap: Record<string, { count: number, revenue: number, profit: number }> = {};
     filteredHistory.forEach(sale => {
       const name = sale.customer_name || 'Umum';
+      const rev = Number(sale.total_revenue || 0);
+      const prof = Number(sale.total_profit || 0);
       if (!customerRecapMap[name]) {
         customerRecapMap[name] = { count: 0, revenue: 0, profit: 0 };
       }
       customerRecapMap[name].count += 1;
-      customerRecapMap[name].revenue += sale.total_revenue;
-      customerRecapMap[name].profit += sale.total_profit;
+      customerRecapMap[name].revenue += rev;
+      customerRecapMap[name].profit += prof;
     });
 
     const customerRecap = Object.entries(customerRecapMap).map(([name, stats]) => {
@@ -570,7 +574,9 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
     // Table Data
     filteredHistory.forEach((sale, idx) => {
       const isEven = idx % 2 === 1;
-      const margin = sale.total_revenue > 0 ? (sale.total_profit / sale.total_revenue) * 100 : 0;
+      const saleRevenue = Number(sale.total_revenue || 0);
+      const saleProfit = Number(sale.total_profit || 0);
+      const margin = saleRevenue > 0 ? (saleProfit / saleRevenue) * 100 : 0;
       
       let marginColor = DARK_TEXT;
       let indicator = '◑';
@@ -591,8 +597,8 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
         { v: sale.id, t: 's', s: { font: { sz: 8, italic: true, color: { rgb: '757575' }, name: 'Calibri' }, fill: { fgColor: { rgb: isEven ? LIGHT_GRAY : WHITE } }, border: thinBorder } },
         dataCell(sale.date, isEven, 'center'),
         dataCell(sale.customer_name, isEven, 'left', true),
-        dataCell(formatCurrency(sale.total_revenue), isEven, 'right', false, GREEN_TEXT),
-        dataCell(formatCurrency(sale.total_profit), isEven, 'right', false, BLUE_ACCENT),
+        dataCell(formatCurrency(saleRevenue), isEven, 'right', false, GREEN_TEXT),
+        dataCell(formatCurrency(saleProfit), isEven, 'right', false, BLUE_ACCENT),
         dataCell(`${margin.toFixed(1)}%`, isEven, 'right', true, marginColor),
         dataCell(indicator, isEven, 'center', true, indicatorColor)
       ]));

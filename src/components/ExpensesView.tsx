@@ -138,7 +138,7 @@ export default function ExpensesView({ expenses, onSave, onDelete }: ExpensesVie
     let totalExpenses = 0;
 
     const rows = filteredExpenses.map((e, idx) => {
-      totalExpenses += e.amount;
+      totalExpenses += Number(e.amount || 0);
       return [
         csvEscape(idx + 1),
         csvEscape(e.date),
