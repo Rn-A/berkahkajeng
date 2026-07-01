@@ -103,11 +103,10 @@ export default function AuditLogsView({ logs }: AuditLogsViewProps) {
       period === 'tahun' ? 'Tahun Ini' : 'Semua Waktu';
 
     const titleRows = [
-      [csvEscape('LAPORAN LOG AKTIVITAS SISTEM - BERKAH KAJENG')],
-      [csvEscape('Tanggal Ekspor'), csvEscape(todayStr)],
-      [csvEscape('Periode Laporan'), csvEscape(periodLabel)],
-      [csvEscape('Total Catatan Log'), csvEscape(filteredLogs.length)],
-      []
+      [csvEscape('📋 LAPORAN LOG AKTIVITAS SISTEM'), '', '', '', ''],
+      [csvEscape('BERKAH KAJENG'), '', '', '', ''],
+      [csvEscape(`Tanggal Ekspor: ${todayStr}  |  Periode: ${periodLabel}  |  Total Catatan: ${filteredLogs.length}`), '', '', '', ''],
+      ['', '', '', '', '']
     ];
 
     const headers = ['No', 'Waktu Aktivitas', 'Nama Pengguna', 'Aksi / Fitur', 'Detail Aktivitas'];
@@ -119,10 +118,16 @@ export default function AuditLogsView({ logs }: AuditLogsViewProps) {
       csvEscape(log.details)
     ]);
 
+    const footerRows = [
+      ['', '', '', '', ''],
+      [csvEscape(`Laporan ini digenerate secara otomatis — Berkah Kajeng © ${new Date().getFullYear()}`), '', '', '', '']
+    ];
+
     const allRows = [
       ...titleRows,
       headers.map(h => csvEscape(h)),
-      ...rows
+      ...rows,
+      ...footerRows
     ];
 
     const csvContent = allRows.map(e => e.join(",")).join("\n");

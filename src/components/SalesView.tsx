@@ -328,11 +328,10 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
       period === 'tahun' ? 'Tahun Ini' : 'Semua Waktu';
 
     const titleRows = [
-      [csvEscape('LAPORAN RIWAYAT PENJUALAN - BERKAH KAJENG')],
-      [csvEscape('Tanggal Ekspor'), csvEscape(todayStr)],
-      [csvEscape('Periode Laporan'), csvEscape(periodLabel)],
-      [csvEscape('Total Transaksi'), csvEscape(filteredHistory.length)],
-      []
+      [csvEscape('🚚 LAPORAN RIWAYAT PENJUALAN'), '', '', '', '', ''],
+      [csvEscape('BERKAH KAJENG'), '', '', '', '', ''],
+      [csvEscape(`Tanggal Ekspor: ${todayStr}  |  Periode: ${periodLabel}  |  Total Transaksi: ${filteredHistory.length}`), '', '', '', '', ''],
+      ['', '', '', '', '', '']
     ];
 
     const headers = ['No', 'ID Transaksi', 'Tanggal', 'Nama Pelanggan', 'Total Pendapatan', 'Total Estimasi Laba'];
@@ -355,18 +354,24 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
 
     const summaryRow = [
       csvEscape('TOTAL PENJUALAN'),
-      csvEscape(''),
-      csvEscape(''),
-      csvEscape(''),
+      '',
+      '',
+      '',
       csvEscape(formatCurrency(totalRevenue)),
       csvEscape(formatCurrency(totalProfit))
+    ];
+
+    const footerRows = [
+      ['', '', '', '', '', ''],
+      [csvEscape(`Laporan ini digenerate secara otomatis — Berkah Kajeng © ${new Date().getFullYear()}`), '', '', '', '', '']
     ];
 
     const allRows = [
       ...titleRows,
       headers.map(h => csvEscape(h)),
       ...rows,
-      summaryRow
+      summaryRow,
+      ...footerRows
     ];
 
     const csvContent = allRows.map(e => e.join(",")).join("\n");

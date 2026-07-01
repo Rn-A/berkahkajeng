@@ -67,11 +67,10 @@ export default function InventoryView({ inventory }: InventoryViewProps) {
     });
 
     const titleRows = [
-      [csvEscape('LAPORAN DATA INVENTARIS STOK - BERKAH KAJENG')],
-      [csvEscape('Tanggal Ekspor'), csvEscape(todayStr)],
-      [csvEscape('Filter Jenis Kayu'), csvEscape(filterType === 'Semua' ? 'Semua Jenis Kayu' : filterType)],
-      [csvEscape('Total Baris Data'), csvEscape(filteredInventory.length)],
-      []
+      [csvEscape('🪵 LAPORAN DATA INVENTARIS STOK'), '', '', '', '', '', '', '', ''],
+      [csvEscape('BERKAH KAJENG'), '', '', '', '', '', '', '', ''],
+      [csvEscape(`Tanggal Ekspor: ${todayStr}  |  Filter Jenis: ${filterType === 'Semua' ? 'Semua Jenis Kayu' : filterType}  |  Total Baris: ${filteredInventory.length}`), '', '', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', '', '', '']
     ];
 
     const headers = [
@@ -94,7 +93,6 @@ export default function InventoryView({ inventory }: InventoryViewProps) {
       const logs = Number(item.total_logs);
       const volume = Number(item.total_volume);
       const value = roundPrice(Number(item.total_value));
-      const avgPrice = roundPrice(Number(item.avg_price));
       
       totalLogs += logs;
       totalVolume += volume;
@@ -111,28 +109,34 @@ export default function InventoryView({ inventory }: InventoryViewProps) {
         csvEscape(item.condition_val || 'Umum'),
         csvEscape(`${logs} Btg`),
         csvEscape(`${volume.toFixed(3)} m³`),
-        csvEscape(`${formatCurrency(avgPrice)} ${priceUnit}`),
+        csvEscape(`${formatCurrency(item.avg_price)} ${priceUnit}`),
         csvEscape(formatCurrency(value))
       ];
     });
 
     const summaryRow = [
       csvEscape('TOTAL ASET INVENTARIS'),
-      csvEscape(''),
-      csvEscape(''),
-      csvEscape(''),
-      csvEscape(''),
+      '',
+      '',
+      '',
+      '',
       csvEscape(`${totalLogs} Btg`),
       csvEscape(`${totalVolume.toFixed(3)} m³`),
-      csvEscape(''),
+      '',
       csvEscape(formatCurrency(totalValue))
+    ];
+
+    const footerRows = [
+      ['', '', '', '', '', '', '', '', ''],
+      [csvEscape(`Laporan ini digenerate secara otomatis — Berkah Kajeng © ${new Date().getFullYear()}`), '', '', '', '', '', '', '', '']
     ];
 
     const allRows = [
       ...titleRows,
       headers.map(h => csvEscape(h)),
       ...rows,
-      summaryRow
+      summaryRow,
+      ...footerRows
     ];
 
     const csvContent = allRows.map(e => e.join(",")).join("\n");

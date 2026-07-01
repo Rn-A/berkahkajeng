@@ -127,11 +127,10 @@ export default function ExpensesView({ expenses, onSave, onDelete }: ExpensesVie
       period === 'tahun' ? 'Tahun Ini' : 'Semua Waktu';
 
     const titleRows = [
-      [csvEscape('LAPORAN PENGELUARAN OPERASIONAL - BERKAH KAJENG')],
-      [csvEscape('Tanggal Ekspor'), csvEscape(todayStr)],
-      [csvEscape('Periode Laporan'), csvEscape(periodLabel)],
-      [csvEscape('Total Catatan'), csvEscape(filteredExpenses.length)],
-      []
+      [csvEscape('💸 LAPORAN PENGELUARAN OPERASIONAL'), '', '', '', ''],
+      [csvEscape('BERKAH KAJENG'), '', '', '', ''],
+      [csvEscape(`Tanggal Ekspor: ${todayStr}  |  Periode: ${periodLabel}  |  Total Catatan: ${filteredExpenses.length}`), '', '', '', ''],
+      ['', '', '', '', '']
     ];
 
     const headers = ['No', 'Tanggal', 'Kategori', 'Deskripsi', 'Jumlah Pengeluaran'];
@@ -151,17 +150,23 @@ export default function ExpensesView({ expenses, onSave, onDelete }: ExpensesVie
 
     const summaryRow = [
       csvEscape('TOTAL PENGELUARAN'),
-      csvEscape(''),
-      csvEscape(''),
-      csvEscape(''),
+      '',
+      '',
+      '',
       csvEscape(formatCurrency(totalExpenses))
+    ];
+
+    const footerRows = [
+      ['', '', '', '', ''],
+      [csvEscape(`Laporan ini digenerate secara otomatis — Berkah Kajeng © ${new Date().getFullYear()}`), '', '', '', '']
     ];
 
     const allRows = [
       ...titleRows,
       headers.map(h => csvEscape(h)),
       ...rows,
-      summaryRow
+      summaryRow,
+      ...footerRows
     ];
 
     const csvContent = allRows.map(row => row.join(",")).join("\n");

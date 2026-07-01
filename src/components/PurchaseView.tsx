@@ -300,10 +300,10 @@ export default function PurchaseView({
     });
 
     const titleRows = [
-      [csvEscape('LAPORAN RIWAYAT PEMBELIAN - BERKAH KAJENG')],
-      [csvEscape('Tanggal Ekspor'), csvEscape(todayStr)],
-      [csvEscape('Total Transaksi'), csvEscape(filteredHistory.length)],
-      []
+      [csvEscape('📦 LAPORAN RIWAYAT PEMBELIAN'), '', '', '', '', ''],
+      [csvEscape('BERKAH KAJENG'), '', '', '', '', ''],
+      [csvEscape(`Tanggal Ekspor: ${todayStr}  |  Total Transaksi: ${filteredHistory.length}`), '', '', '', '', ''],
+      ['', '', '', '', '', '']
     ];
 
     const headers = ['No', 'ID Pembelian', 'Tanggal', 'Nama Supplier', 'Total Volume', 'Total Harga'];
@@ -327,18 +327,24 @@ export default function PurchaseView({
 
     const summaryRow = [
       csvEscape('TOTAL PEMBELIAN'),
-      csvEscape(''),
-      csvEscape(''),
-      csvEscape(''),
+      '',
+      '',
+      '',
       csvEscape(`${totalVolume.toFixed(4)} m³`),
       csvEscape(formatCurrency(totalPrice))
+    ];
+
+    const footerRows = [
+      ['', '', '', '', '', ''],
+      [csvEscape(`Laporan ini digenerate secara otomatis — Berkah Kajeng © ${new Date().getFullYear()}`), '', '', '', '', '']
     ];
 
     const allRows = [
       ...titleRows,
       headers.map(h => csvEscape(h)),
       ...rows,
-      summaryRow
+      summaryRow,
+      ...footerRows
     ];
 
     const csvContent = allRows.map(e => e.join(",")).join("\n");
