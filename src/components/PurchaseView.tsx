@@ -31,6 +31,7 @@ import {
   Supplier
 } from '../types';
 import { cn, roundPrice, generateUUID } from '../lib/utils';
+import XLSX from 'xlsx-js-style';
 
 interface PurchaseViewProps {
   activeSet: WoodSet | null;
@@ -285,13 +286,8 @@ export default function PurchaseView({
     return { ...rawTotals, price: roundPrice(rawTotals.price) };
   };
 
-  const exportToCSV = () => {
+  const exportToExcel = () => {
     if (filteredHistory.length === 0) return;
-
-    const csvEscape = (val: any): string => {
-      const str = String(val ?? '');
-      return `"${str.replace(/"/g, '""')}"`;
-    };
 
     const todayStr = new Date().toLocaleDateString('id-ID', {
       day: 'numeric',
@@ -299,65 +295,418 @@ export default function PurchaseView({
       year: 'numeric'
     });
 
-    const titleRows = [
-      [csvEscape('📦 LAPORAN RIWAYAT PEMBELIAN'), '', '', '', '', ''],
-      [csvEscape('BERKAH KAJENG'), '', '', '', '', ''],
-      [csvEscape(`Tanggal Ekspor: ${todayStr}  |  Total Transaksi: ${filteredHistory.length}`), '', '', '', '', ''],
-      ['', '', '', '', '', '']
+    // ======== Color Palette (matching the reports / mockup) ========
+    const NAVY = '1B2A4A';
+    const DARK_NAVY = '0F1D33';
+    const GOLD = 'C8A951';
+    const WHITE = 'FFFFFF';
+    const LIGHT_GRAY = 'F2F4F8';
+    const MID_GRAY = 'E8ECF1';
+    const DARK_TEXT = '1B2A4A';
+    const BLUE_ACCENT = '1E88E5';
+    const GREEN_ACCENT = '2E7D32';
+    const TEAL_ACCENT = '00695C';
+
+    const thinBorder = {
+      top: { style: 'thin', color: { rgb: MID_GRAY } },
+      bottom: { style: 'thin', color: { rgb: MID_GRAY } },
+      left: { style: 'thin', color: { rgb: MID_GRAY } },
+      right: { style: 'thin', color: { rgb: MID_GRAY } }
+    } as any;
+
+    // Supplier Color Palettes
+    const supplierPalettes = [
+      { // Blue (Alip)
+        lightBg: 'E8F0FE',
+        darkText: '1A73E8',
+        solidBg: '1A73E8',
+      },
+      { // Orange (budi)
+        lightBg: 'FFEFE2',
+        darkText: 'E65100',
+        solidBg: 'E65100',
+      },
+      { // Green (Keri)
+        lightBg: 'E8F5E9',
+        darkText: '2E7D32',
+        solidBg: '2E7D32',
+      },
+      { // Purple (Mesno)
+        lightBg: 'F3E5F5',
+        darkText: '7B1FA2',
+        solidBg: '7B1FA2',
+      },
+      { // Teal
+        lightBg: 'E0F2F1',
+        darkText: '00796B',
+        solidBg: '00796B',
+      },
+      { // Red
+        lightBg: 'FFEBEE',
+        darkText: 'C62828',
+        solidBg: 'C62828',
+      }
     ];
 
-    const headers = ['No', 'ID Pembelian', 'Tanggal', 'Nama Supplier', 'Total Volume', 'Total Harga'];
-    
-    let totalVolume = 0;
-    let totalPrice = 0;
-
-    const rows = filteredHistory.map((set, idx) => {
-      const totals = calculateSetTotals(set);
-      totalVolume += totals.volume;
-      totalPrice += totals.price;
-      return [
-        csvEscape(idx + 1),
-        csvEscape(set.id),
-        csvEscape(set.date),
-        csvEscape(set.supplierName),
-        csvEscape(`${totals.volume.toFixed(4)} m³`),
-        csvEscape(formatCurrency(totals.price))
-      ];
+    // Cell factory helpers
+    const titleCell = (v: string) => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 14, color: { rgb: WHITE }, name: 'Calibri' },
+        fill: { fgColor: { rgb: NAVY } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
     });
 
-    const summaryRow = [
-      csvEscape('TOTAL PEMBELIAN'),
-      '',
-      '',
-      '',
-      csvEscape(`${totalVolume.toFixed(4)} m³`),
-      csvEscape(formatCurrency(totalPrice))
+    const subtitleCell = (v: string) => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 11, color: { rgb: GOLD }, name: 'Calibri' },
+        fill: { fgColor: { rgb: NAVY } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
+    });
+
+    const dateSubtitleCell = (v: string) => ({
+      v, t: 's',
+      s: {
+        font: { italic: true, sz: 9, color: { rgb: 'B0BEC5' }, name: 'Calibri' },
+        fill: { fgColor: { rgb: NAVY } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
+    });
+
+    const sectionHeaderCell = (v: string) => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 11, color: { rgb: WHITE }, name: 'Calibri' },
+        fill: { fgColor: { rgb: NAVY } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
+    });
+
+    const cardTitleCell = (v: string, bgColor: string) => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 9, color: { rgb: WHITE }, name: 'Calibri' },
+        fill: { fgColor: { rgb: bgColor } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
+    });
+
+    const cardValueCell = (v: string, bgColor: string) => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 14, color: { rgb: WHITE }, name: 'Calibri' },
+        fill: { fgColor: { rgb: bgColor } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
+    });
+
+    const tableHeaderCell = (v: string, align: string = 'center') => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 10, color: { rgb: WHITE }, name: 'Calibri' },
+        fill: { fgColor: { rgb: BLUE_ACCENT } },
+        alignment: { horizontal: align, vertical: 'center', wrapText: true },
+        border: thinBorder
+      }
+    });
+
+    const dataCell = (v: string, isEven: boolean = false, align: string = 'left', bold: boolean = false, fontColor: string = DARK_TEXT, customBg: string = '') => ({
+      v, t: 's',
+      s: {
+        font: { sz: 10, color: { rgb: fontColor }, name: 'Calibri', bold },
+        fill: { fgColor: { rgb: customBg ? customBg : (isEven ? LIGHT_GRAY : WHITE) } },
+        alignment: { horizontal: align, vertical: 'center' },
+        border: thinBorder
+      }
+    });
+
+    const totalRowCell = (v: string, align: string = 'left') => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 10, color: { rgb: WHITE }, name: 'Calibri' },
+        fill: { fgColor: { rgb: DARK_NAVY } },
+        alignment: { horizontal: align, vertical: 'center' },
+        border: thinBorder
+      }
+    });
+
+    const emptyCell = () => ({
+      v: '', t: 's',
+      s: { fill: { fgColor: { rgb: WHITE } } }
+    });
+
+    // -------- Calculations --------
+    const totalTransactions = filteredHistory.length;
+    let totalVolume = 0;
+    let totalPrice = 0;
+    const uniqueSuppliers = new Set<string>();
+
+    filteredHistory.forEach(set => {
+      const totals = calculateSetTotals(set);
+      totalVolume += Number(totals.volume || 0);
+      totalPrice += Number(totals.price || 0);
+      if (set.supplierName) {
+        uniqueSuppliers.add(set.supplierName);
+      }
+    });
+
+    const supplierCount = uniqueSuppliers.size;
+
+    // Supplier Colors Map
+    const supplierColorsMap: Record<string, typeof supplierPalettes[0]> = {};
+    Array.from(uniqueSuppliers).forEach((name, idx) => {
+      supplierColorsMap[name] = supplierPalettes[idx % supplierPalettes.length];
+    });
+
+    // Supplier Recap Map
+    const supplierRecapMap: Record<string, { count: number, volume: number, price: number }> = {};
+    filteredHistory.forEach(set => {
+      const name = set.supplierName || 'Umum';
+      const totals = calculateSetTotals(set);
+      if (!supplierRecapMap[name]) {
+        supplierRecapMap[name] = { count: 0, volume: 0, price: 0 };
+      }
+      supplierRecapMap[name].count += 1;
+      supplierRecapMap[name].volume += Number(totals.volume || 0);
+      supplierRecapMap[name].price += Number(totals.price || 0);
+    });
+
+    const supplierRecap = Object.entries(supplierRecapMap).map(([name, stats]) => {
+      const percent = totalPrice > 0 ? (stats.price / totalPrice) * 100 : 0;
+      return {
+        name,
+        count: stats.count,
+        volume: stats.volume,
+        price: stats.price,
+        percent
+      };
+    }).sort((a, b) => b.price - a.price);
+
+    // -------- Build Workbook Data Array --------
+    const wsData: any[] = [];
+    const merges: any[] = [];
+    let row = 0;
+
+    const padRow = (arr: any[]) => {
+      while (arr.length < 6) arr.push(emptyCell());
+      return arr;
+    };
+
+    // 1. Header block
+    wsData.push(padRow([titleCell('🪵 LAPORAN RIWAYAT PEMBELIAN')]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 5 } });
+    row++;
+
+    wsData.push(padRow([subtitleCell('BERKAH KAJENG')]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 5 } });
+    row++;
+
+    wsData.push(padRow([dateSubtitleCell(`Tanggal Ekspor: ${todayStr}  |  Total Transaksi: ${totalTransactions}`)]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 5 } });
+    row++;
+
+    // Spacer
+    wsData.push(padRow([]));
+    row++;
+
+    // 2. Ringkasan Pembelian
+    wsData.push(padRow([sectionHeaderCell('📊 RINGKASAN PEMBELIAN')]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 5 } });
+    row++;
+
+    // Cards headers
+    wsData.push(padRow([
+      cardTitleCell('Total Volume Beli', BLUE_ACCENT), emptyCell(),
+      cardTitleCell('Total Nilai Beli', GREEN_ACCENT), emptyCell(),
+      cardTitleCell('Jumlah Transaksi', TEAL_ACCENT),
+      cardTitleCell('Jumlah Supplier', DARK_NAVY)
+    ]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 1 } });
+    merges.push({ s: { r: row, c: 2 }, e: { r: row, c: 3 } });
+    row++;
+
+    // Cards values
+    wsData.push(padRow([
+      cardValueCell(`${totalVolume.toFixed(3)} m³`, BLUE_ACCENT), emptyCell(),
+      cardValueCell(formatCurrency(totalPrice), GREEN_ACCENT), emptyCell(),
+      cardValueCell(`${totalTransactions} Transaksi`, TEAL_ACCENT),
+      cardValueCell(`${supplierCount} Supplier`, DARK_NAVY)
+    ]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 1 } });
+    merges.push({ s: { r: row, c: 2 }, e: { r: row, c: 3 } });
+    row++;
+
+    // Spacer
+    wsData.push(padRow([]));
+    row++;
+
+    // 3. Rekap per Supplier
+    wsData.push(padRow([sectionHeaderCell('📊 REKAP PER SUPPLIER')]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 5 } });
+    row++;
+
+    // Rekap Headers
+    wsData.push(padRow([
+      tableHeaderCell('Supplier', 'left'), emptyCell(),
+      tableHeaderCell('Jumlah Transaksi'),
+      tableHeaderCell('Total Volume', 'right'),
+      tableHeaderCell('Total Nilai', 'right'),
+      tableHeaderCell('% Nilai', 'right')
+    ]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 1 } });
+    row++;
+
+    // Rekap Data Rows
+    supplierRecap.forEach((sup, idx) => {
+      const isEven = idx % 2 === 1;
+      const palette = supplierColorsMap[sup.name] || supplierPalettes[0];
+
+      wsData.push(padRow([
+        dataCell(sup.name, isEven, 'left', true, palette.darkText, palette.lightBg), emptyCell(),
+        dataCell(`${sup.count}x`, isEven, 'center', false, DARK_TEXT, palette.lightBg),
+        dataCell(`${sup.volume.toFixed(3)} m³`, isEven, 'right', false, DARK_TEXT, palette.lightBg),
+        dataCell(formatCurrency(sup.price), isEven, 'right', true, palette.darkText, palette.lightBg),
+        {
+          v: `${sup.percent.toFixed(1)}%`,
+          t: 's',
+          s: {
+            font: { bold: true, sz: 10, color: { rgb: WHITE }, name: 'Calibri' },
+            fill: { fgColor: { rgb: palette.solidBg } },
+            alignment: { horizontal: 'right', vertical: 'center' },
+            border: thinBorder
+          }
+        }
+      ]));
+      merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 1 } });
+      row++;
+    });
+
+    // Spacer
+    wsData.push(padRow([]));
+    row++;
+
+    // 4. Detail Transaksi
+    wsData.push(padRow([sectionHeaderCell('📑 DETAIL TRANSAKSI PEMBELIAN')]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 5 } });
+    row++;
+
+    // Keterangan Warna Supplier
+    const captionText = `Keterangan Warna Supplier: ` + Array.from(uniqueSuppliers).join('   ');
+    const captionCell = {
+      v: captionText,
+      t: 's',
+      s: {
+        font: { italic: true, sz: 9, color: { rgb: '757575' }, name: 'Calibri' },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      }
+    };
+    wsData.push(padRow([captionCell]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 5 } });
+    row++;
+
+    // Table Headers
+    wsData.push(padRow([
+      tableHeaderCell('No'),
+      tableHeaderCell('ID Pembelian'),
+      tableHeaderCell('Tanggal'),
+      tableHeaderCell('Supplier'),
+      tableHeaderCell('Volume (m³)', 'right'),
+      tableHeaderCell('Total Harga', 'right')
+    ]));
+    row++;
+
+    // Table Data
+    filteredHistory.forEach((set, idx) => {
+      const isEven = idx % 2 === 1;
+      const totals = calculateSetTotals(set);
+      const palette = supplierColorsMap[set.supplierName || 'Umum'] || supplierPalettes[0];
+
+      wsData.push(padRow([
+        dataCell(String(idx + 1), isEven, 'center'),
+        { v: set.id, t: 's', s: { font: { sz: 8, italic: true, color: { rgb: '757575' }, name: 'Calibri' }, fill: { fgColor: { rgb: isEven ? LIGHT_GRAY : WHITE } }, border: thinBorder } },
+        dataCell(set.date, isEven, 'center'),
+        {
+          v: set.supplierName || 'Umum',
+          t: 's',
+          s: {
+            font: { bold: true, sz: 10, color: { rgb: WHITE }, name: 'Calibri' },
+            fill: { fgColor: { rgb: palette.solidBg } },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: thinBorder
+          }
+        },
+        dataCell(totals.volume.toFixed(4), isEven, 'right'),
+        dataCell(formatCurrency(totals.price), isEven, 'right', true, palette.darkText)
+      ]));
+      row++;
+    });
+
+    // Total Row
+    wsData.push(padRow([
+      totalRowCell('TOTAL', 'left'),
+      totalRowCell('', 'center'),
+      totalRowCell('', 'center'),
+      totalRowCell(`${totalTransactions} Transaksi`, 'center'),
+      totalRowCell(`${totalVolume.toFixed(3)} m³`, 'right'),
+      totalRowCell(formatCurrency(totalPrice), 'right')
+    ]));
+    row++;
+
+    // Spacer
+    wsData.push(padRow([]));
+    row++;
+
+    // Footer
+    const footerTextCell = {
+      v: `Laporan ini digenerate secara otomatis — Berkah Kajeng © ${new Date().getFullYear()}`,
+      t: 's',
+      s: {
+        font: { italic: true, sz: 8, color: { rgb: '9E9E9E' }, name: 'Calibri' },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
+    };
+    wsData.push(padRow([footerTextCell]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 5 } });
+    row++;
+
+    // ======== Create workbook ========
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    ws['!merges'] = merges;
+    ws['!cols'] = [
+      { wch: 6 },   // No
+      { wch: 38 },  // ID Pembelian
+      { wch: 15 },  // Tanggal
+      { wch: 18 },  // Supplier
+      { wch: 18 },  // Volume (m3)
+      { wch: 20 }   // Total Harga
     ];
 
-    const footerRows = [
-      ['', '', '', '', '', ''],
-      [csvEscape(`Laporan ini digenerate secara otomatis — Berkah Kajeng © ${new Date().getFullYear()}`), '', '', '', '', '']
-    ];
+    // Row heights
+    const rowHeights: any[] = [];
+    for (let i = 0; i < row; i++) {
+      if (i <= 2) {
+        rowHeights.push({ hpt: i === 0 ? 32 : i === 1 ? 24 : 18 });
+      } else if (i === 5 || i === 6) {
+        rowHeights.push({ hpt: i === 5 ? 18 : 28 }); // card deck sizes
+      } else {
+        rowHeights.push({ hpt: 20 });
+      }
+    }
+    ws['!rows'] = rowHeights;
 
-    const allRows = [
-      ...titleRows,
-      headers.map(h => csvEscape(h)),
-      ...rows,
-      summaryRow,
-      ...footerRows
-    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Pembelian');
 
-    const csvContent = allRows.map(e => e.join(",")).join("\n");
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `riwayat_pembelian_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const dateFileStr = (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+
+    XLSX.writeFile(wb, `Riwayat_Pembelian_BerkahKajeng_${dateFileStr}.xlsx`);
   };
 
   const updateCategory = (id: string, updates: Partial<WoodCategory>) => {
@@ -1358,11 +1707,11 @@ export default function PurchaseView({
                   <div className="flex items-center gap-4">
                     <h2 className="text-lg font-bold dark:text-white">Riwayat Set Kayu</h2>
                     <button
-                      onClick={exportToCSV}
-                      className="flex items-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg transition-colors"
+                      onClick={exportToExcel}
+                      className="flex items-center gap-2 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 rounded-xl transition-colors"
                     >
                       <Download size={14} />
-                      Export CSV
+                      Export Excel
                     </button>
                   </div>
                   <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full">
