@@ -23,6 +23,7 @@ import {
 import { InventoryItem, Sale, SaleItem, Customer } from '../types';
 import { cn, roundPrice, generateUUID, formatPeriodDisplay } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import XLSX from 'xlsx-js-style';
 
 interface SalesViewProps {
   inventory: InventoryItem[];
@@ -307,13 +308,8 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredHistory.slice(indexOfFirstItem, indexOfLastItem);
 
-  const exportToCSV = () => {
+  const exportToExcel = () => {
     if (filteredHistory.length === 0) return;
-
-    const csvEscape = (val: any): string => {
-      const str = String(val ?? '');
-      return `"${str.replace(/"/g, '""')}"`;
-    };
 
     const todayStr = new Date().toLocaleDateString('id-ID', {
       day: 'numeric',
@@ -327,64 +323,388 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
       period === 'bulan' ? 'Bulan Ini' :
       period === 'tahun' ? 'Tahun Ini' : 'Semua Waktu';
 
-    const titleRows = [
-      [csvEscape('🚚 LAPORAN RIWAYAT PENJUALAN'), '', '', '', '', ''],
-      [csvEscape('BERKAH KAJENG'), '', '', '', '', ''],
-      [csvEscape(`Tanggal Ekspor: ${todayStr}  |  Periode: ${periodLabel}  |  Total Transaksi: ${filteredHistory.length}`), '', '', '', '', ''],
-      ['', '', '', '', '', '']
-    ];
+    // ======== Color Palette (matching the reports / mockup) ========
+    const NAVY = '1B2A4A';
+    const DARK_NAVY = '0F1D33';
+    const GOLD = 'C8A951';
+    const WHITE = 'FFFFFF';
+    const LIGHT_GRAY = 'F2F4F8';
+    const MID_GRAY = 'E8ECF1';
+    const DARK_TEXT = '1B2A4A';
+    const GREEN_TEXT = '2E7D32';
+    const RED_TEXT = 'C62828';
+    const BLUE_ACCENT = '1E88E5';
+    const GREEN_ACCENT = '2E7D32';
+    const TEAL_ACCENT = '00695C';
 
-    const headers = ['No', 'ID Transaksi', 'Tanggal', 'Nama Pelanggan', 'Total Pendapatan', 'Total Estimasi Laba'];
-    
-    let totalRevenue = 0;
-    let totalProfit = 0;
+    const thinBorder = {
+      top: { style: 'thin', color: { rgb: MID_GRAY } },
+      bottom: { style: 'thin', color: { rgb: MID_GRAY } },
+      left: { style: 'thin', color: { rgb: MID_GRAY } },
+      right: { style: 'thin', color: { rgb: MID_GRAY } }
+    } as any;
 
-    const rows = filteredHistory.map((sale, idx) => {
-      totalRevenue += sale.total_revenue;
-      totalProfit += sale.total_profit;
-      return [
-        csvEscape(idx + 1),
-        csvEscape(sale.id),
-        csvEscape(sale.date),
-        csvEscape(sale.customer_name),
-        csvEscape(formatCurrency(sale.total_revenue)),
-        csvEscape(formatCurrency(sale.total_profit))
-      ];
+    // Cell factory helpers
+    const titleCell = (v: string) => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 14, color: { rgb: WHITE }, name: 'Calibri' },
+        fill: { fgColor: { rgb: NAVY } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
     });
 
-    const summaryRow = [
-      csvEscape('TOTAL PENJUALAN'),
-      '',
-      '',
-      '',
-      csvEscape(formatCurrency(totalRevenue)),
-      csvEscape(formatCurrency(totalProfit))
+    const subtitleCell = (v: string) => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 11, color: { rgb: GOLD }, name: 'Calibri' },
+        fill: { fgColor: { rgb: NAVY } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
+    });
+
+    const dateSubtitleCell = (v: string) => ({
+      v, t: 's',
+      s: {
+        font: { italic: true, sz: 9, color: { rgb: 'B0BEC5' }, name: 'Calibri' },
+        fill: { fgColor: { rgb: NAVY } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
+    });
+
+    const sectionHeaderCell = (v: string) => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 11, color: { rgb: WHITE }, name: 'Calibri' },
+        fill: { fgColor: { rgb: NAVY } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
+    });
+
+    const cardTitleCell = (v: string, bgColor: string) => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 9, color: { rgb: WHITE }, name: 'Calibri' },
+        fill: { fgColor: { rgb: bgColor } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
+    });
+
+    const cardValueCell = (v: string, bgColor: string) => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 14, color: { rgb: WHITE }, name: 'Calibri' },
+        fill: { fgColor: { rgb: bgColor } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
+    });
+
+    const tableHeaderCell = (v: string, align: string = 'center') => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 10, color: { rgb: WHITE }, name: 'Calibri' },
+        fill: { fgColor: { rgb: BLUE_ACCENT } },
+        alignment: { horizontal: align, vertical: 'center', wrapText: true },
+        border: thinBorder
+      }
+    });
+
+    const dataCell = (v: string, isEven: boolean = false, align: string = 'left', bold: boolean = false, fontColor: string = DARK_TEXT) => ({
+      v, t: 's',
+      s: {
+        font: { sz: 10, color: { rgb: fontColor }, name: 'Calibri', bold },
+        fill: { fgColor: { rgb: isEven ? LIGHT_GRAY : WHITE } },
+        alignment: { horizontal: align, vertical: 'center' },
+        border: thinBorder
+      }
+    });
+
+    const totalRowCell = (v: string, align: string = 'left') => ({
+      v, t: 's',
+      s: {
+        font: { bold: true, sz: 10, color: { rgb: WHITE }, name: 'Calibri' },
+        fill: { fgColor: { rgb: DARK_NAVY } },
+        alignment: { horizontal: align, vertical: 'center' },
+        border: thinBorder
+      }
+    });
+
+    const emptyCell = () => ({
+      v: '', t: 's',
+      s: { fill: { fgColor: { rgb: WHITE } } }
+    });
+
+    // -------- Calculations --------
+    const totalTransactions = filteredHistory.length;
+    let totalRevenue = 0;
+    let totalProfit = 0;
+    const uniqueCustomers = new Set<string>();
+
+    filteredHistory.forEach(sale => {
+      totalRevenue += sale.total_revenue;
+      totalProfit += sale.total_profit;
+      if (sale.customer_name) {
+        uniqueCustomers.add(sale.customer_name);
+      }
+    });
+
+    const averageMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+    const customerCount = uniqueCustomers.size;
+
+    // Customer Recap Map
+    const customerRecapMap: Record<string, { count: number, revenue: number, profit: number }> = {};
+    filteredHistory.forEach(sale => {
+      const name = sale.customer_name || 'Umum';
+      if (!customerRecapMap[name]) {
+        customerRecapMap[name] = { count: 0, revenue: 0, profit: 0 };
+      }
+      customerRecapMap[name].count += 1;
+      customerRecapMap[name].revenue += sale.total_revenue;
+      customerRecapMap[name].profit += sale.total_profit;
+    });
+
+    const customerRecap = Object.entries(customerRecapMap).map(([name, stats]) => {
+      const margin = stats.revenue > 0 ? (stats.profit / stats.revenue) * 100 : 0;
+      return {
+        name,
+        count: stats.count,
+        revenue: stats.revenue,
+        profit: stats.profit,
+        margin
+      };
+    }).sort((a, b) => b.revenue - a.revenue);
+
+    // -------- Build Workbook Data Array --------
+    const wsData: any[] = [];
+    const merges: any[] = [];
+    let row = 0;
+
+    const padRow = (arr: any[]) => {
+      while (arr.length < 8) arr.push(emptyCell());
+      return arr;
+    };
+
+    // 1. Header block
+    wsData.push(padRow([titleCell('🪵 LAPORAN RIWAYAT PENJUALAN')]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 7 } });
+    row++;
+
+    wsData.push(padRow([subtitleCell('BERKAH KAJENG')]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 7 } });
+    row++;
+
+    wsData.push(padRow([dateSubtitleCell(`Tanggal Ekspor: ${todayStr}  |  Periode: ${periodLabel}  |  Total Transaksi: ${totalTransactions}`)]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 7 } });
+    row++;
+
+    // Spacer
+    wsData.push(padRow([]));
+    row++;
+
+    // 2. Ringkasan Keuangan
+    wsData.push(padRow([sectionHeaderCell('📊 RINGKASAN KEUANGAN')]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 7 } });
+    row++;
+
+    // Cards headers
+    wsData.push(padRow([
+      cardTitleCell('Total Pendapatan', BLUE_ACCENT), emptyCell(),
+      cardTitleCell('Total Est. Laba', GREEN_ACCENT), emptyCell(),
+      cardTitleCell('Margin Rata-rata', TEAL_ACCENT), emptyCell(),
+      cardTitleCell('Jumlah Pelanggan', DARK_NAVY), emptyCell()
+    ]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 1 } });
+    merges.push({ s: { r: row, c: 2 }, e: { r: row, c: 3 } });
+    merges.push({ s: { r: row, c: 4 }, e: { r: row, c: 5 } });
+    merges.push({ s: { r: row, c: 6 }, e: { r: row, c: 7 } });
+    row++;
+
+    // Cards values
+    wsData.push(padRow([
+      cardValueCell(formatCurrency(totalRevenue), BLUE_ACCENT), emptyCell(),
+      cardValueCell(formatCurrency(totalProfit), GREEN_ACCENT), emptyCell(),
+      cardValueCell(`${averageMargin.toFixed(1)}%`, TEAL_ACCENT), emptyCell(),
+      cardValueCell(`${customerCount} Pelanggan`, DARK_NAVY), emptyCell()
+    ]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 1 } });
+    merges.push({ s: { r: row, c: 2 }, e: { r: row, c: 3 } });
+    merges.push({ s: { r: row, c: 4 }, e: { r: row, c: 5 } });
+    merges.push({ s: { r: row, c: 6 }, e: { r: row, c: 7 } });
+    row++;
+
+    // Spacer
+    wsData.push(padRow([]));
+    row++;
+
+    // 3. Detail Transaksi
+    wsData.push(padRow([sectionHeaderCell('📑 DETAIL TRANSAKSI PENJUALAN')]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 7 } });
+    row++;
+
+    // Keterangan Margin
+    const captionCell = {
+      v: 'Keterangan Margin:  ● >= 40% (Tinggi)   ◑ 15-39% (Sedang)   ○ < 15% (Rendah)',
+      t: 's',
+      s: {
+        font: { italic: true, sz: 9, color: { rgb: '757575' }, name: 'Calibri' },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      }
+    };
+    wsData.push(padRow([captionCell]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 7 } });
+    row++;
+
+    // Table Headers
+    wsData.push(padRow([
+      tableHeaderCell('No'),
+      tableHeaderCell('ID Transaksi'),
+      tableHeaderCell('Tanggal'),
+      tableHeaderCell('Nama Pelanggan'),
+      tableHeaderCell('Total Pendapatan', 'right'),
+      tableHeaderCell('Est. Laba', 'right'),
+      tableHeaderCell('Margin (%)', 'right'),
+      tableHeaderCell('Indikator')
+    ]));
+    row++;
+
+    // Table Data
+    filteredHistory.forEach((sale, idx) => {
+      const isEven = idx % 2 === 1;
+      const margin = sale.total_revenue > 0 ? (sale.total_profit / sale.total_revenue) * 100 : 0;
+      
+      let marginColor = DARK_TEXT;
+      let indicator = '◑';
+      let indicatorColor = DARK_TEXT;
+
+      if (margin >= 40) {
+        marginColor = GREEN_TEXT;
+        indicator = '●';
+        indicatorColor = GREEN_TEXT;
+      } else if (margin < 15) {
+        marginColor = RED_TEXT;
+        indicator = '○';
+        indicatorColor = RED_TEXT;
+      }
+
+      wsData.push(padRow([
+        dataCell(String(idx + 1), isEven, 'center'),
+        { v: sale.id, t: 's', s: { font: { sz: 8, italic: true, color: { rgb: '757575' }, name: 'Calibri' }, fill: { fgColor: { rgb: isEven ? LIGHT_GRAY : WHITE } }, border: thinBorder } },
+        dataCell(sale.date, isEven, 'center'),
+        dataCell(sale.customer_name, isEven, 'left', true),
+        dataCell(formatCurrency(sale.total_revenue), isEven, 'right', false, GREEN_TEXT),
+        dataCell(formatCurrency(sale.total_profit), isEven, 'right', false, BLUE_ACCENT),
+        dataCell(`${margin.toFixed(1)}%`, isEven, 'right', true, marginColor),
+        dataCell(indicator, isEven, 'center', true, indicatorColor)
+      ]));
+      row++;
+    });
+
+    // Total Row
+    wsData.push(padRow([
+      totalRowCell('TOTAL', 'left'),
+      totalRowCell('', 'center'),
+      totalRowCell('', 'center'),
+      totalRowCell(`${totalTransactions} Transaksi`, 'center'),
+      totalRowCell(formatCurrency(totalRevenue), 'right'),
+      totalRowCell(formatCurrency(totalProfit), 'right'),
+      totalRowCell(`${averageMargin.toFixed(1)}%`, 'right'),
+      totalRowCell('', 'center')
+    ]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 2 } });
+    row++;
+
+    // Spacer
+    wsData.push(padRow([]));
+    row++;
+
+    // 4. Rekap per Pelanggan
+    wsData.push(padRow([sectionHeaderCell('📊 REKAP PER PELANGGAN')]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 7 } });
+    row++;
+
+    // Rekap Headers
+    wsData.push(padRow([
+      tableHeaderCell('Nama Pelanggan', 'left'), emptyCell(),
+      tableHeaderCell('Jumlah Transaksi'),
+      tableHeaderCell('Total Pendapatan', 'right'),
+      tableHeaderCell('Total Est. Laba', 'right'),
+      tableHeaderCell('Margin Rata-rata', 'right')
+    ]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 1 } });
+    row++;
+
+    // Rekap Data Rows
+    customerRecap.forEach((cust, idx) => {
+      const isEven = idx % 2 === 1;
+      let marginColor = DARK_TEXT;
+      if (cust.margin >= 40) marginColor = GREEN_TEXT;
+      else if (cust.margin < 15) marginColor = RED_TEXT;
+
+      wsData.push(padRow([
+        dataCell(cust.name, isEven, 'left', true), emptyCell(),
+        dataCell(`${cust.count}x`, isEven, 'center'),
+        dataCell(formatCurrency(cust.revenue), isEven, 'right', false, GREEN_TEXT),
+        dataCell(formatCurrency(cust.profit), isEven, 'right', false, BLUE_ACCENT),
+        dataCell(`${cust.margin.toFixed(1)}%`, isEven, 'right', true, marginColor)
+      ]));
+      merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 1 } });
+      row++;
+    });
+
+    // Spacer
+    wsData.push(padRow([]));
+    row++;
+
+    // Footer
+    const footerTextCell = {
+      v: `Laporan ini digenerate secara otomatis — Berkah Kajeng © ${new Date().getFullYear()}`,
+      t: 's',
+      s: {
+        font: { italic: true, sz: 8, color: { rgb: '9E9E9E' }, name: 'Calibri' },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      }
+    };
+    wsData.push(padRow([footerTextCell]));
+    merges.push({ s: { r: row, c: 0 }, e: { r: row, c: 7 } });
+    row++;
+
+    // ======== Create workbook ========
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    ws['!merges'] = merges;
+    ws['!cols'] = [
+      { wch: 6 },   // No
+      { wch: 38 },  // ID Transaksi
+      { wch: 15 },  // Tanggal
+      { wch: 24 },  // Nama Pelanggan
+      { wch: 20 },  // Total Pendapatan
+      { wch: 18 },  // Est. Laba
+      { wch: 14 },  // Margin (%)
+      { wch: 12 }   // Indikator
     ];
 
-    const footerRows = [
-      ['', '', '', '', '', ''],
-      [csvEscape(`Laporan ini digenerate secara otomatis — Berkah Kajeng © ${new Date().getFullYear()}`), '', '', '', '', '']
-    ];
+    // Row heights
+    const rowHeights: any[] = [];
+    for (let i = 0; i < row; i++) {
+      if (i <= 2) {
+        rowHeights.push({ hpt: i === 0 ? 32 : i === 1 ? 24 : 18 });
+      } else if (i === 5 || i === 6) {
+        rowHeights.push({ hpt: i === 5 ? 18 : 28 }); // card deck sizes
+      } else {
+        rowHeights.push({ hpt: 20 });
+      }
+    }
+    ws['!rows'] = rowHeights;
 
-    const allRows = [
-      ...titleRows,
-      headers.map(h => csvEscape(h)),
-      ...rows,
-      summaryRow,
-      ...footerRows
-    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Penjualan');
 
-    const csvContent = allRows.map(e => e.join(",")).join("\n");
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `riwayat_penjualan_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const dateFileStr = (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+
+    XLSX.writeFile(wb, `Riwayat_Penjualan_BerkahKajeng_${periodLabel.replace(/\s/g, '_')}_${dateFileStr}.xlsx`);
   };
 
   const addItem = () => {
@@ -611,11 +931,11 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
               />
             </div>
             <button
-              onClick={exportToCSV}
-              className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors shrink-0"
-              title="Export CSV"
+              onClick={exportToExcel}
+              className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-800 transition-colors shrink-0"
+              title="Export Excel"
             >
-              <Download size={18} />
+              <Download size={20} />
             </button>
           </div>
         </div>
