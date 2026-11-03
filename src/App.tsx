@@ -33,6 +33,7 @@ import {
   Expense,
   AuditLog,
 } from "./types";
+import { apiUrl } from "./lib/api";
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
   React.lazy(async () => {
     try {
@@ -210,7 +211,7 @@ export default function App() {
 
   const handleLogout = useCallback(() => {
     if (auth.user?.token) {
-      fetch("/api/logout", {
+      fetch(apiUrl("/api/logout"), {
         method: "POST",
         headers: { Authorization: `Bearer ${auth.user.token}` }
       }).catch(console.error);
@@ -249,7 +250,11 @@ export default function App() {
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       try {
-        const response = await fetch(url, {
+        const targetUrl =
+          url.startsWith("http://") || url.startsWith("https://")
+            ? url
+            : apiUrl(url);
+        const response = await fetch(targetUrl, {
           ...options,
           headers,
           signal: controller.signal,
@@ -411,7 +416,7 @@ export default function App() {
 
   const handleLogin = async (credentials: any) => {
     try {
-      const response = await fetch("/api/login", {
+      const response = await fetch(apiUrl("/api/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),

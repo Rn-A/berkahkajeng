@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, ArrowLeft, Send, CheckCircle2, KeyRound, Lock, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { apiUrl } from '../lib/api';
 
 interface ForgotPasswordViewProps {
   onBack: () => void;
@@ -25,7 +26,7 @@ export default function ForgotPasswordView({ onBack }: ForgotPasswordViewProps) 
     setError(null);
 
     try {
-      const res = await fetch('/api/forgot-password', {
+      const res = await fetch(apiUrl('/api/forgot-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -59,7 +60,7 @@ export default function ForgotPasswordView({ onBack }: ForgotPasswordViewProps) 
     setError(null);
 
     try {
-      const res = await fetch('/api/reset-password', {
+      const res = await fetch(apiUrl('/api/reset-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, token: otp, newPassword })

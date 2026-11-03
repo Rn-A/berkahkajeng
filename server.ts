@@ -120,9 +120,31 @@ app.use(
 );
 
 // Konfigurasi CORS
+const allowedOrigins = [
+  process.env.ALLOWED_ORIGIN || "http://localhost:3000",
+  "https://berkahkajeng.vercel.app",
+  "capacitor://localhost",
+  "http://localhost",
+  "https://localhost",
+];
+
 app.use(
   cors({
-    origin: process.env.ALLOWED_ORIGIN || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or Postman)
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        origin.startsWith("http://localhost") ||
+        origin.startsWith("https://localhost") ||
+        origin.startsWith("capacitor://") ||
+        origin.startsWith("ionic://")
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Blocked by CORS: ${origin}`));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

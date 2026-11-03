@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Lock, Save, ShieldCheck, AlertCircle } from 'lucide-react';
 import { AuthState } from '../types';
+import { apiUrl } from '../lib/api';
 
 interface ProfileViewProps {
   auth: AuthState;
@@ -45,7 +46,7 @@ export default function ProfileView({ auth, onUpdateAuth }: ProfileViewProps) {
 
     setIsLoading(true);
     try {
-      const res = await fetch('/api/profile', {
+      const res = await fetch(apiUrl('/api/profile'), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${auth.user?.token}`,

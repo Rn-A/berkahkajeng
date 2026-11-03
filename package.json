@@ -12,9 +12,13 @@
     "start": "node dist-server/server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "mobile:sync": "npm run build:client && npx cap sync",
+    "mobile:open": "npx cap open android",
+    "mobile:build": "npm run build:client && npx cap sync && powershell -Command \"$env:JAVA_HOME='C:\\Program Files\\Java\\jdk-19'; cd android; .\\gradlew.bat assembleDebug; cd ..; Copy-Item android\\app\\build\\outputs\\apk\\debug\\app-debug.apk berkah-kajeng.apk\""
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.3",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "cors": "^2.8.6",
@@ -34,6 +38,8 @@
     "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",

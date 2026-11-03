@@ -7,6 +7,7 @@ import {
 import { TrendingUp, Package, ShoppingCart, Wallet, ArrowUpRight, CreditCard, Activity, Download, Database, Calendar } from 'lucide-react';
 import { DashboardData, Sale, WoodSet, InventoryItem, Expense } from '../types';
 import { roundPrice, formatPeriodDisplay } from '../lib/utils';
+import { apiUrl } from '../lib/api';
 
 interface DashboardViewProps {
   data: DashboardData | null;
@@ -537,7 +538,7 @@ export default function DashboardView({ data, salesHistory, purchasesHistory, in
             onClick={async () => {
               try {
                 const token = JSON.parse(localStorage.getItem('logyard_auth') || '{}').token;
-                const res = await fetch('/api/export-all', {
+                const res = await fetch(apiUrl('/api/export-all'), {
                   headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();

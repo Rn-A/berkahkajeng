@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, UserCheck, ShieldAlert, Edit, Trash2, Save, X, Search, Lock, Unlock, Key, AtSign, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { apiUrl } from '../lib/api';
 
 interface Account {
   id: number;
@@ -28,7 +29,7 @@ export default function UserManagementView({ auth, onDeleteUser }: UserManagemen
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/users', {
+      const res = await fetch(apiUrl('/api/users'), {
         headers: { 'Authorization': `Bearer ${auth.user.token}` }
       });
       if (res.ok) {
@@ -51,7 +52,7 @@ export default function UserManagementView({ auth, onDeleteUser }: UserManagemen
     setErrorMsg('');
     try {
       if (isEditing && formData.id) {
-        const res = await fetch(`/api/users/${formData.id}`, {
+        const res = await fetch(apiUrl(`/api/users/${formData.id}`), {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${auth.user.token}`,
@@ -64,7 +65,7 @@ export default function UserManagementView({ auth, onDeleteUser }: UserManagemen
           throw new Error(err.error || 'Gagal update');
         }
       } else {
-        const res = await fetch('/api/users', {
+        const res = await fetch(apiUrl('/api/users'), {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${auth.user.token}`,
