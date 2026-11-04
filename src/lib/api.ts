@@ -4,8 +4,9 @@
  */
 export const getApiBaseUrl = (): string => {
   // If explicitly specified in .env (e.g. VITE_API_URL)
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+  const envApiUrl = (import.meta as any).env?.VITE_API_URL;
+  if (envApiUrl) {
+    return envApiUrl;
   }
 
   // Detect native mobile runtime (Capacitor)

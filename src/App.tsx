@@ -19,6 +19,8 @@ import {
   CheckCircle2,
   Info,
   XCircle,
+  WifiOff,
+  RefreshCw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -34,13 +36,27 @@ import {
   AuditLog,
 } from "./types";
 import { apiUrl } from "./lib/api";
+import {
+  loadCache,
+  saveCache,
+  loadDraftSet,
+  saveDraftSet,
+  loadOfflineQueue,
+  saveOfflineQueue,
+  enqueueOfflineItem,
+  applyOptimisticPurchaseToInventory,
+  applyOptimisticSaleToInventory,
+  OfflineQueueItem,
+} from "./lib/offline";
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
   React.lazy(async () => {
     try {
       return await componentImport();
     } catch (error) {
-      console.error("Chunk load error, refreshing...", error);
-      window.location.reload();
+      console.error("Chunk load error:", error);
+      if (typeof navigator === "undefined" || navigator.onLine) {
+        window.location.reload();
+      }
       return { default: () => null };
     }
   });
@@ -143,22 +159,96 @@ export default function App() {
     return { user: null, isAuthenticated: false };
   });
 
-  // State for data
-  const [activeSet, setActiveSet] = useState<WoodSet | null>(null);
-  const [history, setHistory] = useState<WoodSet[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [salesHistory, setSalesHistory] = useState<Sale[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
-    null,
+  // State for data (initialized from local offline cache)
+  const [activeSet, setActiveSet] = useState<WoodSet | null>(() =>
+    loadDraftSet(),
   );
-  const [woodTypes, setWoodTypes] = useState<{ name: string }[]>([]);
+  const [history, setHistory] = useState<WoodSet[]>(() =>
+    loadCache<WoodSet[]>("history", []),
+  );
+  const [inventory, setInventory] = useState<InventoryItem[]>(() =>
+    loadCache<InventoryItem[]>("inventory", []),
+  );
+  const [salesHistory, setSalesHistory] = useState<Sale[]>(() =>
+    loadCache<Sale[]>("sales", []),
+  );
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() =>
+    loadCache<Supplier[]>("suppliers", []),
+  );
+  const [customers, setCustomers] = useState<Customer[]>(() =>
+    loadCache<Customer[]>("customers", []),
+  );
+  const [expenses, setExpenses] = useState<Expense[]>(() =>
+    loadCache<Expense[]>("expenses", []),
+  );
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() =>
+    loadCache<AuditLog[]>("auditLogs", []),
+  );
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(() =>
+    loadCache<DashboardData | null>("dashboard", null),
+  );
+  const [woodTypes, setWoodTypes] = useState<{ name: string }[]>(() =>
+    loadCache<{ name: string }[]>("woodTypes", []),
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(() => {
+    const hasCached =
+      loadCache<InventoryItem[]>("inventory", []).length > 0 ||
+      loadCache<WoodSet[]>("history", []).length > 0 ||
+      loadCache<DashboardData | null>("dashboard", null) !== null;
+    return !hasCached && (typeof navigator === "undefined" || navigator.onLine);
+  });
+
+  // Offline & Sync Queue State
+  const [isOnline, setIsOnline] = useState<boolean>(() =>
+    typeof navigator !== "undefined" ? navigator.onLine : true,
+  );
+  const [offlineQueue, setOfflineQueue] = useState<OfflineQueueItem[]>(() =>
+    loadOfflineQueue(),
+  );
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Persist activeSet draft & cached data automatically
+  useEffect(() => {
+    saveDraftSet(activeSet);
+  }, [activeSet]);
+
+  useEffect(() => {
+    saveCache("history", history);
+  }, [history]);
+
+  useEffect(() => {
+    saveCache("inventory", inventory);
+  }, [inventory]);
+
+  useEffect(() => {
+    saveCache("sales", salesHistory);
+  }, [salesHistory]);
+
+  useEffect(() => {
+    saveCache("suppliers", suppliers);
+  }, [suppliers]);
+
+  useEffect(() => {
+    saveCache("customers", customers);
+  }, [customers]);
+
+  useEffect(() => {
+    saveCache("expenses", expenses);
+  }, [expenses]);
+
+  useEffect(() => {
+    saveCache("auditLogs", auditLogs);
+  }, [auditLogs]);
+
+  useEffect(() => {
+    if (dashboardData) saveCache("dashboard", dashboardData);
+  }, [dashboardData]);
+
+  useEffect(() => {
+    if (woodTypes.length > 0) saveCache("woodTypes", woodTypes);
+  }, [woodTypes]);
 
   // Modal & Toast State
   const [modalConfig, setModalConfig] = useState<{
@@ -392,7 +482,9 @@ export default function App() {
         }
       } catch (error) {
         console.error("Fetch error:", error);
-        showToast("Gagal memuat data. Silakan coba lagi.", "error");
+        if (typeof navigator !== "undefined" && navigator.onLine) {
+          showToast("Gagal memuat data terbaru. Menampilkan data tersimpan.", "info");
+        }
       } finally {
         setIsInitialLoad(false);
         setIsLoading(false);
@@ -402,11 +494,138 @@ export default function App() {
     [fetchWithAuth, auth.user?.role, handleLogout, showToast],
   );
 
+  const isSyncingRef = React.useRef(false);
+  const syncOfflineQueue = useCallback(async () => {
+    if (isSyncingRef.current || !auth.isAuthenticated) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+
+    const currentQueue = loadOfflineQueue();
+    if (currentQueue.length === 0) return;
+
+    isSyncingRef.current = true;
+    setIsSyncing(true);
+    let remainingQueue = [...currentQueue];
+    let syncedCount = 0;
+
+    try {
+      for (const item of currentQueue) {
+        try {
+          const res = await fetchWithAuth(item.endpoint, {
+            method: item.method,
+            body: JSON.stringify(item.payload),
+          });
+
+          if (res.ok) {
+            remainingQueue = remainingQueue.filter((q) => q.id !== item.id);
+            saveOfflineQueue(remainingQueue);
+            setOfflineQueue([...remainingQueue]);
+            syncedCount++;
+          } else if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+            let errMessage = `Kode ${res.status}`;
+            try {
+              const errData = await res.json();
+              if (errData?.error) errMessage = errData.error;
+            } catch {
+              // ignore JSON parse error
+            }
+            remainingQueue = remainingQueue.filter((q) => q.id !== item.id);
+            saveOfflineQueue(remainingQueue);
+            setOfflineQueue([...remainingQueue]);
+            showToast(`Gagal sinkronisasi ${item.label}: ${errMessage}`, "error");
+          } else {
+            // 5xx or rate-limit: stop and retry later
+            break;
+          }
+        } catch (networkErr) {
+          // Network dropped during sync; keep remaining items for next online event
+          break;
+        }
+      }
+
+      if (syncedCount > 0) {
+        showToast(
+          `${syncedCount} transaksi offline berhasil disinkronkan ke server!`,
+          "success",
+        );
+        await fetchData(activeView);
+      }
+    } finally {
+      isSyncingRef.current = false;
+      setIsSyncing(false);
+    }
+  }, [auth.isAuthenticated, fetchWithAuth, fetchData, activeView, showToast]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      const q = loadOfflineQueue();
+      if (q.length > 0) {
+        showToast(`Internet terhubung! Menyinkronkan ${q.length} transaksi...`, "info");
+        syncOfflineQueue();
+      } else {
+        showToast("Koneksi internet kembali aktif.", "success");
+        fetchData(activeView);
+      }
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      showToast(
+        "Mode Offline: Anda tetap bisa mencatat transaksi, data akan disinkronkan saat online.",
+        "info",
+      );
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [syncOfflineQueue, fetchData, activeView, showToast]);
+
+  useEffect(() => {
+    if (auth.isAuthenticated && isOnline && offlineQueue.length > 0) {
+      syncOfflineQueue();
+    }
+  }, [auth.isAuthenticated, isOnline, offlineQueue.length, syncOfflineQueue]);
+
   useEffect(() => {
     if (auth.isAuthenticated) {
       fetchData(activeView);
     }
   }, [auth.isAuthenticated, activeView]);
+
+  // Preload core views and reference data in background so all menus work offline
+  useEffect(() => {
+    if (!auth.isAuthenticated) return;
+    const timer = setTimeout(() => {
+      import("./components/DashboardView").catch(() => {});
+      import("./components/PurchaseView").catch(() => {});
+      import("./components/InventoryView").catch(() => {});
+      import("./components/SalesView").catch(() => {});
+      import("./components/SuppliersView").catch(() => {});
+      import("./components/CustomersView").catch(() => {});
+      import("./components/ExpensesView").catch(() => {});
+      import("./components/ReportsView").catch(() => {});
+
+      if (typeof navigator === "undefined" || navigator.onLine) {
+        Promise.allSettled([
+          fetchWithAuth("/api/suppliers"),
+          fetchWithAuth("/api/customers"),
+          fetchWithAuth("/api/wood-types"),
+        ]).then(async (res) => {
+          if (res[0].status === "fulfilled" && res[0].value?.ok)
+            setSuppliers(await res[0].value.json());
+          if (res[1].status === "fulfilled" && res[1].value?.ok)
+            setCustomers(await res[1].value.json());
+          if (res[2].status === "fulfilled" && res[2].value?.ok)
+            setWoodTypes(await res[2].value.json());
+        });
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [auth.isAuthenticated, fetchWithAuth]);
 
   useEffect(() => {
     if (auth.isAuthenticated && activeView === "purchase" && !activeSet) {
@@ -449,6 +668,30 @@ export default function App() {
     if (!setToSave || setToSave.categories.length === 0) return;
     setIsSaving(true);
 
+    const saveOffline = () => {
+      const updatedQueue = enqueueOfflineItem({
+        type: "PURCHASE_CREATE",
+        endpoint: "/api/sets",
+        method: "POST",
+        payload: setToSave,
+        label: `Pembelian (${setToSave.supplierName || "Supplier"})`,
+      });
+      setOfflineQueue(updatedQueue);
+      setHistory((prev) => [setToSave, ...prev.filter((s) => s.id !== setToSave.id)]);
+      setInventory((prev) => applyOptimisticPurchaseToInventory(prev, setToSave));
+      createNewSet();
+      showToast(
+        "Disimpan secara Offline! Otomatis disinkronkan saat internet aktif.",
+        "info",
+      );
+    };
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      saveOffline();
+      setIsSaving(false);
+      return;
+    }
+
     try {
       const response = await fetchWithAuth("/api/sets", {
         method: "POST",
@@ -462,7 +705,8 @@ export default function App() {
         showToast("Gagal menyimpan ke database!", "error");
       }
     } catch (error) {
-      showToast("Gagal menghubungi server.", "error");
+      // Network failure fallback -> Queue offline so Mandor's log measurements are never lost
+      saveOffline();
     } finally {
       setIsSaving(false);
     }
@@ -489,6 +733,28 @@ export default function App() {
   };
 
   const handleSaveSale = async (sale: any) => {
+    const saveSaleOffline = () => {
+      const updatedQueue = enqueueOfflineItem({
+        type: "SALE_CREATE",
+        endpoint: "/api/sales",
+        method: "POST",
+        payload: sale,
+        label: `Penjualan (${sale.customer_name || "Pelanggan"})`,
+      });
+      setOfflineQueue(updatedQueue);
+      setSalesHistory((prev) => [sale, ...prev.filter((s) => s.id !== sale.id)]);
+      setInventory((prev) => applyOptimisticSaleToInventory(prev, sale));
+      showToast(
+        "Penjualan disimpan Offline! Otomatis disinkronkan saat internet aktif.",
+        "info",
+      );
+    };
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      saveSaleOffline();
+      return;
+    }
+
     try {
       const response = await fetchWithAuth("/api/sales", {
         method: "POST",
@@ -503,7 +769,18 @@ export default function App() {
         showToast("Gagal: " + err.error, "error");
         throw new Error(err.error);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Only queue offline if it was a network error (not a server validation error)
+      if (
+        error?.name === "AbortError" ||
+        error instanceof TypeError ||
+        (typeof navigator !== "undefined" && !navigator.onLine) ||
+        String(error?.message || "").toLowerCase().includes("failed to fetch") ||
+        String(error?.message || "").toLowerCase().includes("network")
+      ) {
+        saveSaleOffline();
+        return;
+      }
       console.error(error);
       throw error;
     }
@@ -530,11 +807,36 @@ export default function App() {
   };
 
   const handleSaveSupplier = async (supplier: any) => {
-    const response = await fetchWithAuth("/api/suppliers", {
-      method: "POST",
-      body: JSON.stringify(supplier),
-    });
-    if (response.ok) await fetchData(activeView);
+    const saveOffline = () => {
+      const updatedQueue = enqueueOfflineItem({
+        type: "SUPPLIER_SAVE",
+        endpoint: "/api/suppliers",
+        method: "POST",
+        payload: supplier,
+        label: `Supplier (${supplier.name})`,
+      });
+      setOfflineQueue(updatedQueue);
+      setSuppliers((prev) => [
+        supplier,
+        ...prev.filter((s) => s.id !== supplier.id),
+      ]);
+      showToast("Supplier disimpan offline & masuk antrean sinkronisasi.", "info");
+    };
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      saveOffline();
+      return;
+    }
+
+    try {
+      const response = await fetchWithAuth("/api/suppliers", {
+        method: "POST",
+        body: JSON.stringify(supplier),
+      });
+      if (response.ok) await fetchData(activeView);
+    } catch {
+      saveOffline();
+    }
   };
 
   const handleDeleteSupplier = async (id: string) => {
@@ -557,11 +859,36 @@ export default function App() {
   };
 
   const handleSaveCustomer = async (customer: any) => {
-    const response = await fetchWithAuth("/api/customers", {
-      method: "POST",
-      body: JSON.stringify(customer),
-    });
-    if (response.ok) await fetchData(activeView);
+    const saveOffline = () => {
+      const updatedQueue = enqueueOfflineItem({
+        type: "CUSTOMER_SAVE",
+        endpoint: "/api/customers",
+        method: "POST",
+        payload: customer,
+        label: `Pelanggan (${customer.name})`,
+      });
+      setOfflineQueue(updatedQueue);
+      setCustomers((prev) => [
+        customer,
+        ...prev.filter((c) => c.id !== customer.id),
+      ]);
+      showToast("Pelanggan disimpan offline & masuk antrean sinkronisasi.", "info");
+    };
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      saveOffline();
+      return;
+    }
+
+    try {
+      const response = await fetchWithAuth("/api/customers", {
+        method: "POST",
+        body: JSON.stringify(customer),
+      });
+      if (response.ok) await fetchData(activeView);
+    } catch {
+      saveOffline();
+    }
   };
 
   const handleDeleteCustomer = async (id: string) => {
@@ -588,11 +915,37 @@ export default function App() {
     const url = isUpdate ? `/api/expenses/${expense.id}` : "/api/expenses";
     const method = isUpdate ? "PUT" : "POST";
 
-    const response = await fetchWithAuth(url, {
-      method,
-      body: JSON.stringify(expense),
-    });
-    if (response.ok) await fetchData(activeView);
+    const saveOffline = () => {
+      const updatedQueue = enqueueOfflineItem({
+        type: "EXPENSE_SAVE",
+        endpoint: url,
+        method,
+        payload: expense,
+        label: `Pengeluaran (${expense.category})`,
+      });
+      setOfflineQueue(updatedQueue);
+      setExpenses((prev) =>
+        isUpdate
+          ? prev.map((e) => (e.id === expense.id ? expense : e))
+          : [expense, ...prev],
+      );
+      showToast("Pengeluaran disimpan offline & masuk antrean sinkronisasi.", "info");
+    };
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      saveOffline();
+      return;
+    }
+
+    try {
+      const response = await fetchWithAuth(url, {
+        method,
+        body: JSON.stringify(expense),
+      });
+      if (response.ok) await fetchData(activeView);
+    } catch {
+      saveOffline();
+    }
   };
 
   const handleDeleteExpense = async (id: string) => {
@@ -615,6 +968,28 @@ export default function App() {
   };
 
   const handleAddWoodType = async (name: string) => {
+    const saveOffline = () => {
+      const updatedQueue = enqueueOfflineItem({
+        type: "WOOD_TYPE_ADD",
+        endpoint: "/api/wood-types",
+        method: "POST",
+        payload: { name },
+        label: `Jenis Kayu (${name})`,
+      });
+      setOfflineQueue(updatedQueue);
+      setWoodTypes((prev) =>
+        prev.some((w) => w.name.toLowerCase() === name.toLowerCase())
+          ? prev
+          : [...prev, { name }],
+      );
+      showToast(`Jenis kayu "${name}" disimpan offline.`, "info");
+    };
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      saveOffline();
+      return;
+    }
+
     try {
       const res = await fetchWithAuth("/api/wood-types", {
         method: "POST",
@@ -622,7 +997,7 @@ export default function App() {
       });
       if (res.ok) await fetchData(activeView);
     } catch (e) {
-      alert("Gagal menambah jenis kayu");
+      saveOffline();
     }
   };
 
@@ -867,6 +1242,23 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {!isOnline && (
+            <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+              <WifiOff size={12} />
+              Offline
+            </span>
+          )}
+          {offlineQueue.length > 0 && (
+            <button
+              onClick={syncOfflineQueue}
+              disabled={!isOnline || isSyncing}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-wider active:scale-95 transition-transform"
+              title="Ketuk untuk sinkronisasi antrean offline"
+            >
+              <RefreshCw size={12} className={cn(isSyncing && "animate-spin")} />
+              {offlineQueue.length} Sync
+            </button>
+          )}
           <div className="text-right mr-1">
             <p className="text-[10px] font-bold uppercase text-zinc-400 leading-none">
               {auth.user?.role}
@@ -985,6 +1377,25 @@ export default function App() {
             {menuItems.find((m) => m.id === activeView)?.label}
           </h2>
           <div className="flex items-center gap-4">
+            {!isOnline && (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs font-bold">
+                <WifiOff size={14} />
+                Mode Offline
+              </span>
+            )}
+            {offlineQueue.length > 0 && (
+              <button
+                onClick={syncOfflineQueue}
+                disabled={!isOnline || isSyncing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-60"
+                title="Klik untuk sinkronisasi antrean transaksi offline"
+              >
+                <RefreshCw size={14} className={cn(isSyncing && "animate-spin")} />
+                {isSyncing
+                  ? "Menyinkronkan..."
+                  : `${offlineQueue.length} Antrean Sync`}
+              </button>
+            )}
             <div className="text-right">
               <p className="text-xs font-bold text-zinc-900 dark:text-white">
                 {auth.user?.role === "owner"

@@ -1,0 +1,25 @@
+{
+  "name": "Berkah Kajeng - Sistem Akuntansi Kayu",
+  "short_name": "Berkah Kajeng",
+  "description": "Aplikasi manajemen dan akuntansi kayu gelondongan untuk pangkalan kayu Berkah Kajeng.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#18181b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
