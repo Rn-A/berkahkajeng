@@ -28,7 +28,10 @@ CREATE TABLE IF NOT EXISTS wood_sets (
   date DATE, 
   total_volume FLOAT DEFAULT 0, 
   total_value DECIMAL(15, 2) DEFAULT 0, 
-  synced BOOLEAN DEFAULT FALSE
+  synced BOOLEAN DEFAULT FALSE,
+  payment_status VARCHAR(20) DEFAULT 'lunas',
+  amount_paid DECIMAL(15, 2) DEFAULT 0,
+  due_date DATE NULL
 );
 
 -- 3. Wood Categories
@@ -71,7 +74,10 @@ CREATE TABLE IF NOT EXISTS sales (
   date DATE, 
   total_revenue DECIMAL(15, 2) DEFAULT 0, 
   total_cost DECIMAL(15, 2) DEFAULT 0, 
-  total_profit DECIMAL(15, 2) DEFAULT 0
+  total_profit DECIMAL(15, 2) DEFAULT 0,
+  payment_status VARCHAR(20) DEFAULT 'lunas',
+  amount_paid DECIMAL(15, 2) DEFAULT 0,
+  due_date DATE NULL
 );
 
 -- 7. Sales Items
@@ -126,4 +132,78 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   details TEXT, 
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- 12. Wood Types
+CREATE TABLE IF NOT EXISTS wood_types (
+  name VARCHAR(100) PRIMARY KEY,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 13. Password Resets
+CREATE TABLE IF NOT EXISTS password_resets (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  token VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMP NOT NULL
+);
+
+-- 14. Debt Payments (Cicilan Hutang Supplier & Piutang Pelanggan)
+CREATE TABLE IF NOT EXISTS debt_payments (
+  id VARCHAR(36) PRIMARY KEY,
+  reference_type ENUM('purchase', 'sale') NOT NULL,
+  reference_id VARCHAR(36) NOT NULL,
+  amount DECIMAL(15, 2) NOT NULL,
+  payment_date DATE NOT NULL,
+  notes VARCHAR(255),
+  created_by VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 15. Employees (Master Data Karyawan)
+CREATE TABLE IF NOT EXISTS employees (
+  id VARCHAR(36) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  position VARCHAR(100) NOT NULL,
+  phone VARCHAR(20),
+  daily_wage DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'aktif',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 16. Attendance (Presensi Harian Karyawan)
+CREATE TABLE IF NOT EXISTS attendance (
+  id VARCHAR(36) PRIMARY KEY,
+  employee_id VARCHAR(36) NOT NULL,
+  date DATE NOT NULL,
+  status ENUM('hadir', 'setengah_hari', 'izin', 'alfa') NOT NULL DEFAULT 'hadir',
+  overtime_pay DECIMAL(15, 2) DEFAULT 0,
+  cash_advance DECIMAL(15, 2) DEFAULT 0,
+  notes VARCHAR(255),
+  recorded_by VARCHAR(100),
+  payroll_id VARCHAR(36) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_emp_date (employee_id, date),
+  FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+);
+
+-- 17. Payrolls (Pencairan Penggajian Karyawan)
+CREATE TABLE IF NOT EXISTS payrolls (
+  id VARCHAR(36) PRIMARY KEY,
+  employee_id VARCHAR(36) NOT NULL,
+  employee_name VARCHAR(255) NOT NULL,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  total_hadir INT DEFAULT 0,
+  total_setengah_hari INT DEFAULT 0,
+  daily_wage DECIMAL(15, 2) DEFAULT 0,
+  base_salary DECIMAL(15, 2) DEFAULT 0,
+  total_overtime DECIMAL(15, 2) DEFAULT 0,
+  total_deduction DECIMAL(15, 2) DEFAULT 0,
+  net_salary DECIMAL(15, 2) NOT NULL,
+  payment_date DATE NOT NULL,
+  expense_id VARCHAR(36) NULL,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
 );

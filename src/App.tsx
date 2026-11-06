@@ -21,6 +21,8 @@ import {
   XCircle,
   WifiOff,
   RefreshCw,
+  Wallet,
+  CalendarCheck,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -34,6 +36,10 @@ import {
   Customer,
   Expense,
   AuditLog,
+  DebtPayment,
+  Employee,
+  Attendance,
+  Payroll,
 } from "./types";
 import { apiUrl } from "./lib/api";
 import {
@@ -69,6 +75,8 @@ const ReportsView = lazyWithRetry(() => import("./components/ReportsView"));
 const SuppliersView = lazyWithRetry(() => import("./components/SuppliersView"));
 const CustomersView = lazyWithRetry(() => import("./components/CustomersView"));
 const ExpensesView = lazyWithRetry(() => import("./components/ExpensesView"));
+const DebtsView = lazyWithRetry(() => import("./components/DebtsView"));
+const PayrollView = lazyWithRetry(() => import("./components/PayrollView"));
 const AuditLogsView = lazyWithRetry(
   () => import("./components/AuditLogsView"),
 );
@@ -90,6 +98,8 @@ type ViewType =
   | "purchase"
   | "inventory"
   | "sales"
+  | "debts"
+  | "payroll"
   | "reports"
   | "suppliers"
   | "customers"
@@ -190,6 +200,18 @@ export default function App() {
   const [woodTypes, setWoodTypes] = useState<{ name: string }[]>(() =>
     loadCache<{ name: string }[]>("woodTypes", []),
   );
+  const [debtPayments, setDebtPayments] = useState<DebtPayment[]>(() =>
+    loadCache<DebtPayment[]>("debtPayments", []),
+  );
+  const [employees, setEmployees] = useState<Employee[]>(() =>
+    loadCache<Employee[]>("employees", []),
+  );
+  const [attendance, setAttendance] = useState<Attendance[]>(() =>
+    loadCache<Attendance[]>("attendance", []),
+  );
+  const [payrolls, setPayrolls] = useState<Payroll[]>(() =>
+    loadCache<Payroll[]>("payrolls", []),
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(() => {
@@ -249,6 +271,22 @@ export default function App() {
   useEffect(() => {
     if (woodTypes.length > 0) saveCache("woodTypes", woodTypes);
   }, [woodTypes]);
+
+  useEffect(() => {
+    saveCache("debtPayments", debtPayments);
+  }, [debtPayments]);
+
+  useEffect(() => {
+    saveCache("employees", employees);
+  }, [employees]);
+
+  useEffect(() => {
+    saveCache("attendance", attendance);
+  }, [attendance]);
+
+  useEffect(() => {
+    saveCache("payrolls", payrolls);
+  }, [payrolls]);
 
   // Modal & Toast State
   const [modalConfig, setModalConfig] = useState<{
@@ -444,6 +482,34 @@ export default function App() {
               if (res?.ok) setExpenses(await res.json());
               break;
             }
+            case "debts": {
+              const res = await Promise.allSettled([
+                fetchWithAuth("/api/sets"),
+                fetchWithAuth("/api/sales"),
+                fetchWithAuth("/api/debt-payments"),
+              ]);
+              if (res[0].status === "fulfilled" && res[0].value?.ok)
+                setHistory(await res[0].value.json());
+              if (res[1].status === "fulfilled" && res[1].value?.ok)
+                setSalesHistory(await res[1].value.json());
+              if (res[2].status === "fulfilled" && res[2].value?.ok)
+                setDebtPayments(await res[2].value.json());
+              break;
+            }
+            case "payroll": {
+              const res = await Promise.allSettled([
+                fetchWithAuth("/api/employees"),
+                fetchWithAuth("/api/attendance"),
+                fetchWithAuth("/api/payrolls"),
+              ]);
+              if (res[0].status === "fulfilled" && res[0].value?.ok)
+                setEmployees(await res[0].value.json());
+              if (res[1].status === "fulfilled" && res[1].value?.ok)
+                setAttendance(await res[1].value.json());
+              if (res[2].status === "fulfilled" && res[2].value?.ok)
+                setPayrolls(await res[2].value.json());
+              break;
+            }
             case "reports": {
               const res = await Promise.allSettled([
                 fetchWithAuth("/api/sales"),
@@ -607,6 +673,8 @@ export default function App() {
       import("./components/SuppliersView").catch(() => {});
       import("./components/CustomersView").catch(() => {});
       import("./components/ExpensesView").catch(() => {});
+      import("./components/DebtsView").catch(() => {});
+      import("./components/PayrollView").catch(() => {});
       import("./components/ReportsView").catch(() => {});
 
       if (typeof navigator === "undefined" || navigator.onLine) {
@@ -614,6 +682,7 @@ export default function App() {
           fetchWithAuth("/api/suppliers"),
           fetchWithAuth("/api/customers"),
           fetchWithAuth("/api/wood-types"),
+          fetchWithAuth("/api/employees"),
         ]).then(async (res) => {
           if (res[0].status === "fulfilled" && res[0].value?.ok)
             setSuppliers(await res[0].value.json());
@@ -621,6 +690,8 @@ export default function App() {
             setCustomers(await res[1].value.json());
           if (res[2].status === "fulfilled" && res[2].value?.ok)
             setWoodTypes(await res[2].value.json());
+          if (res[3].status === "fulfilled" && res[3].value?.ok)
+            setEmployees(await res[3].value.json());
         });
       }
     }, 1500);
@@ -1040,6 +1111,228 @@ export default function App() {
     });
   };
 
+  // --- HUTANG & PIUTANG HANDLER ---
+  const handleSaveDebtPayment = async (payment: Omit<DebtPayment, "created_at">) => {
+    const saveOffline = () => {
+      const updatedQueue = enqueueOfflineItem({
+        type: "DEBT_PAYMENT_CREATE",
+        endpoint: "/api/debt-payments",
+        method: "POST",
+        payload: payment,
+        label: `Cicilan ${payment.reference_type === "purchase" ? "Hutang" : "Piutang"}`,
+      });
+      setOfflineQueue(updatedQueue);
+      setDebtPayments((prev) => [payment as DebtPayment, ...prev]);
+      if (payment.reference_type === "purchase") {
+        setHistory((prev) =>
+          prev.map((s) => {
+            if (s.id !== payment.reference_id) return s;
+            const nextPaid = Math.min(
+              Number(s.total_value),
+              (Number(s.amount_paid) || 0) + Number(payment.amount),
+            );
+            return {
+              ...s,
+              amount_paid: nextPaid,
+              payment_status: nextPaid >= Number(s.total_value) ? "lunas" : "hutang",
+            };
+          }),
+        );
+      } else {
+        setSalesHistory((prev) =>
+          prev.map((s) => {
+            if (s.id !== payment.reference_id) return s;
+            const nextPaid = Math.min(
+              Number(s.total_revenue),
+              (Number(s.amount_paid) || 0) + Number(payment.amount),
+            );
+            return {
+              ...s,
+              amount_paid: nextPaid,
+              payment_status: nextPaid >= Number(s.total_revenue) ? "lunas" : "piutang",
+            };
+          }),
+        );
+      }
+      showToast("Pembayaran cicilan disimpan offline!", "info");
+    };
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      saveOffline();
+      return;
+    }
+
+    try {
+      const res = await fetchWithAuth("/api/debt-payments", {
+        method: "POST",
+        body: JSON.stringify(payment),
+      });
+      if (res.ok) {
+        showToast("Pembayaran berhasil dicatat!", "success");
+        await fetchData(activeView);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || "Gagal menyimpan pembayaran", "error");
+      }
+    } catch {
+      saveOffline();
+    }
+  };
+
+  // --- PRESENSI & PENGGAJIAN HANDLERS ---
+  const handleSaveEmployee = async (emp: Partial<Employee>) => {
+    const saveOffline = () => {
+      const tempEmp: Employee = {
+        id: emp.id || generateUUID(),
+        name: emp.name || "",
+        position: emp.position || "Pekerja Logyard",
+        phone: emp.phone || "",
+        daily_wage: Number(emp.daily_wage) || 0,
+        status: emp.status || "aktif",
+      };
+      const updatedQueue = enqueueOfflineItem({
+        type: "EMPLOYEE_SAVE",
+        endpoint: "/api/employees",
+        method: "POST",
+        payload: { ...emp, id: tempEmp.id },
+        label: `Karyawan (${tempEmp.name})`,
+      });
+      setOfflineQueue(updatedQueue);
+      setEmployees((prev) =>
+        emp.id
+          ? prev.map((e) => (e.id === emp.id ? tempEmp : e))
+          : [...prev, tempEmp],
+      );
+      showToast("Data karyawan disimpan offline.", "info");
+    };
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      saveOffline();
+      return;
+    }
+
+    try {
+      const res = await fetchWithAuth("/api/employees", {
+        method: "POST",
+        body: JSON.stringify(emp),
+      });
+      if (res.ok) {
+        showToast("Data karyawan berhasil disimpan!", "success");
+        await fetchData(activeView);
+      }
+    } catch {
+      saveOffline();
+    }
+  };
+
+  const handleDeleteEmployee = async (id: string) => {
+    try {
+      const res = await fetchWithAuth(`/api/employees/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        showToast("Data karyawan diperbarui/dihapus.", "success");
+        await fetchData(activeView);
+      }
+    } catch {
+      showToast("Gagal menghapus karyawan.", "error");
+    }
+  };
+
+  const handleSaveAttendance = async (records: Partial<Attendance>[]) => {
+    const saveOffline = () => {
+      const updatedQueue = enqueueOfflineItem({
+        type: "ATTENDANCE_SAVE",
+        endpoint: "/api/attendance",
+        method: "POST",
+        payload: { records },
+        label: `Presensi Harian (${records[0]?.date || ""})`,
+      });
+      setOfflineQueue(updatedQueue);
+      setAttendance((prev) => {
+        const next = [...prev];
+        for (const rec of records) {
+          const idx = next.findIndex(
+            (a) =>
+              String(a.employee_id) === String(rec.employee_id) &&
+              a.date === rec.date,
+          );
+          const emp = employees.find((e) => String(e.id) === String(rec.employee_id));
+          const fullRec: Attendance = {
+            id: idx >= 0 ? next[idx].id : generateUUID(),
+            employee_id: String(rec.employee_id),
+            employee_name: emp?.name,
+            date: rec.date || "",
+            status: rec.status || "hadir",
+            overtime_pay: Number(rec.overtime_pay) || 0,
+            cash_advance: Number(rec.cash_advance) || 0,
+            notes: rec.notes || "",
+            payroll_id: null,
+          };
+          if (idx >= 0) next[idx] = fullRec;
+          else next.unshift(fullRec);
+        }
+        return next;
+      });
+      showToast("Presensi disimpan offline & masuk antrean sinkronisasi!", "info");
+    };
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      saveOffline();
+      return;
+    }
+
+    try {
+      const res = await fetchWithAuth("/api/attendance", {
+        method: "POST",
+        body: JSON.stringify({ records }),
+      });
+      if (res.ok) {
+        showToast("Presensi harian berhasil disimpan!", "success");
+        await fetchData(activeView);
+      }
+    } catch {
+      saveOffline();
+    }
+  };
+
+  const handleSavePayroll = async (
+    payroll: Partial<Payroll> & { attendance_ids?: string[] },
+  ) => {
+    try {
+      const res = await fetchWithAuth("/api/payrolls", {
+        method: "POST",
+        body: JSON.stringify(payroll),
+      });
+      if (res.ok) {
+        showToast(
+          "Gaji berhasil dicairkan & otomatis tercatat di Pengeluaran!",
+          "success",
+        );
+        await fetchData(activeView);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || "Gagal mencairkan gaji", "error");
+      }
+    } catch {
+      showToast("Gagal mencairkan gaji. Pastikan koneksi internet aktif.", "error");
+    }
+  };
+
+  const handleDeletePayroll = async (id: string) => {
+    try {
+      const res = await fetchWithAuth(`/api/payrolls/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        showToast("Pencairan gaji dibatalkan.", "info");
+        await fetchData(activeView);
+      }
+    } catch {
+      showToast("Gagal membatalkan pencairan gaji.", "error");
+    }
+  };
+
   const menuItems = [
     {
       id: "dashboard",
@@ -1063,6 +1356,18 @@ export default function App() {
       id: "sales",
       label: "Penjualan",
       icon: ShoppingCart,
+      roles: ["owner", "mandor"],
+    },
+    {
+      id: "debts",
+      label: "Hutang & Piutang",
+      icon: Wallet,
+      roles: ["owner", "mandor"],
+    },
+    {
+      id: "payroll",
+      label: "Presensi & Gaji",
+      icon: CalendarCheck,
       roles: ["owner", "mandor"],
     },
     {
@@ -1485,6 +1790,28 @@ export default function App() {
                       onDelete={handleDeleteSale}
                       salesHistory={salesHistory}
                       customers={customers}
+                    />
+                  )}
+                  {activeView === "debts" && (
+                    <DebtsView
+                      purchases={history}
+                      sales={salesHistory}
+                      debtPayments={debtPayments}
+                      onSavePayment={handleSaveDebtPayment}
+                      userRole={auth.user?.role || "mandor"}
+                    />
+                  )}
+                  {activeView === "payroll" && (
+                    <PayrollView
+                      employees={employees}
+                      attendance={attendance}
+                      payrolls={payrolls}
+                      currentUser={auth.user}
+                      onSaveEmployee={handleSaveEmployee}
+                      onDeleteEmployee={handleDeleteEmployee}
+                      onSaveAttendance={handleSaveAttendance}
+                      onSavePayroll={handleSavePayroll}
+                      onDeletePayroll={handleDeletePayroll}
                     />
                   )}
                   {activeView === "suppliers" && (

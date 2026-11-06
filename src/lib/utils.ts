@@ -5,6 +5,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(Number(value) || 0);
+}
+
 /**
  * Custom Rounding: Round to 1000. 
  * Rule: <= 500 rounds DOWN, > 500 rounds UP.

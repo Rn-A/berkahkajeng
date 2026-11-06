@@ -280,6 +280,117 @@ export async function initDB() {
       `CREATE TABLE IF NOT EXISTS wood_types (name VARCHAR(100) PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
     );
 
+    // Migrasi kolom Hutang & Piutang pada wood_sets & sales
+    try {
+      await connection.query(
+        `ALTER TABLE wood_sets ADD COLUMN payment_status VARCHAR(20) DEFAULT 'lunas'`,
+      );
+    } catch (e) {}
+    try {
+      await connection.query(
+        `ALTER TABLE wood_sets ADD COLUMN amount_paid DECIMAL(15, 2) DEFAULT 0`,
+      );
+      await connection.query(
+        `UPDATE wood_sets SET amount_paid = total_value WHERE payment_status = 'lunas' AND amount_paid = 0`,
+      );
+    } catch (e) {}
+    try {
+      await connection.query(
+        `ALTER TABLE wood_sets ADD COLUMN due_date DATE NULL`,
+      );
+    } catch (e) {}
+
+    try {
+      await connection.query(
+        `ALTER TABLE sales ADD COLUMN payment_status VARCHAR(20) DEFAULT 'lunas'`,
+      );
+    } catch (e) {}
+    try {
+      await connection.query(
+        `ALTER TABLE sales ADD COLUMN amount_paid DECIMAL(15, 2) DEFAULT 0`,
+      );
+      await connection.query(
+        `UPDATE sales SET amount_paid = total_revenue WHERE payment_status = 'lunas' AND amount_paid = 0`,
+      );
+    } catch (e) {}
+    try {
+      await connection.query(
+        `ALTER TABLE sales ADD COLUMN due_date DATE NULL`,
+      );
+    } catch (e) {}
+
+    // Tabel Riwayat Cicilan Hutang & Piutang
+    await connection.query(
+      `CREATE TABLE IF NOT EXISTS debt_payments (
+        id VARCHAR(36) PRIMARY KEY,
+        reference_type ENUM('purchase', 'sale') NOT NULL,
+        reference_id VARCHAR(36) NOT NULL,
+        amount DECIMAL(15, 2) NOT NULL,
+        payment_date DATE NOT NULL,
+        notes VARCHAR(255),
+        created_by VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX(reference_id),
+        INDEX(payment_date)
+      )`,
+    );
+
+    // Tabel Karyawan (Employees)
+    await connection.query(
+      `CREATE TABLE IF NOT EXISTS employees (
+        id VARCHAR(36) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        position VARCHAR(100) NOT NULL,
+        phone VARCHAR(20),
+        daily_wage DECIMAL(15, 2) NOT NULL DEFAULT 0,
+        status VARCHAR(20) DEFAULT 'aktif',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+    );
+
+    // Tabel Presensi Harian Karyawan (Attendance)
+    await connection.query(
+      `CREATE TABLE IF NOT EXISTS attendance (
+        id VARCHAR(36) PRIMARY KEY,
+        employee_id VARCHAR(36) NOT NULL,
+        date DATE NOT NULL,
+        status ENUM('hadir', 'setengah_hari', 'izin', 'alfa') NOT NULL DEFAULT 'hadir',
+        overtime_pay DECIMAL(15, 2) DEFAULT 0,
+        cash_advance DECIMAL(15, 2) DEFAULT 0,
+        notes VARCHAR(255),
+        recorded_by VARCHAR(100),
+        payroll_id VARCHAR(36) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_emp_date (employee_id, date),
+        FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+        INDEX(date)
+      )`,
+    );
+
+    // Tabel Pencairan Gaji Karyawan (Payrolls)
+    await connection.query(
+      `CREATE TABLE IF NOT EXISTS payrolls (
+        id VARCHAR(36) PRIMARY KEY,
+        employee_id VARCHAR(36) NOT NULL,
+        employee_name VARCHAR(255) NOT NULL,
+        period_start DATE NOT NULL,
+        period_end DATE NOT NULL,
+        total_hadir INT DEFAULT 0,
+        total_setengah_hari INT DEFAULT 0,
+        daily_wage DECIMAL(15, 2) DEFAULT 0,
+        base_salary DECIMAL(15, 2) DEFAULT 0,
+        total_overtime DECIMAL(15, 2) DEFAULT 0,
+        total_deduction DECIMAL(15, 2) DEFAULT 0,
+        net_salary DECIMAL(15, 2) NOT NULL,
+        payment_date DATE NOT NULL,
+        expense_id VARCHAR(36) NULL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+        INDEX(payment_date)
+      )`,
+    );
+
     // Isi data awal jenis kayu
     const [existingWoodTypes]: any = await connection.query(
       "SELECT * FROM wood_types",
@@ -899,9 +1010,22 @@ apiRouter.get("/sets", authenticateToken, async (req, res) => {
       const detailedSets = sets.map((set: any) => {
         let d = set.date instanceof Date ? set.date : new Date(set.date);
         let dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        let dueStr: string | null = null;
+        if (set.due_date) {
+          let dd = set.due_date instanceof Date ? set.due_date : new Date(set.due_date);
+          if (!isNaN(dd.getTime())) {
+            dueStr = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, "0")}-${String(dd.getDate()).padStart(2, "0")}`;
+          }
+        }
         return {
           ...set,
           date: dateStr,
+          due_date: dueStr,
+          payment_status: set.payment_status || "lunas",
+          amount_paid:
+            set.payment_status === "hutang"
+              ? Number(set.amount_paid || 0)
+              : Number(set.total_value || 0),
           categories: categoriesBySet.get(set.id) || [],
         };
       });
@@ -1030,10 +1154,42 @@ apiRouter.post("/sets", authenticateToken, async (req, res) => {
       totalValue += catVal;
     }
     totalValue = roundPrice(totalValue);
+    const paymentStatus = set.payment_status === "hutang" ? "hutang" : "lunas";
+    const amountPaid =
+      paymentStatus === "lunas"
+        ? totalValue
+        : Math.min(totalValue, Math.max(0, Number(set.amount_paid || 0)));
+    const dueDate =
+      paymentStatus === "hutang" && set.due_date ? set.due_date : null;
+
     await connection.query(
-      "INSERT INTO wood_sets (id, supplierName, date, total_volume, total_value, synced) VALUES (?, ?, ?, ?, ?, ?)",
-      [set.id, set.supplierName, set.date, totalVolume, totalValue, true],
+      "INSERT INTO wood_sets (id, supplierName, date, total_volume, total_value, synced, payment_status, amount_paid, due_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        set.id,
+        set.supplierName,
+        set.date,
+        totalVolume,
+        totalValue,
+        true,
+        paymentStatus,
+        amountPaid,
+        dueDate,
+      ],
     );
+
+    if (paymentStatus === "hutang" && amountPaid > 0) {
+      await connection.query(
+        "INSERT INTO debt_payments (id, reference_type, reference_id, amount, payment_date, notes, created_by) VALUES (?, 'purchase', ?, ?, ?, ?, ?)",
+        [
+          crypto.randomUUID(),
+          set.id,
+          amountPaid,
+          set.date,
+          "Uang Muka (DP Awal)",
+          req.user?.username || "System",
+        ],
+      );
+    }
     for (const cat of set.categories) {
       await connection.query(
         "INSERT INTO wood_categories (id, set_id, woodType, length, condition_val, pricePerM3) VALUES (?, ?, ?, ?, ?, ?)",
@@ -1242,9 +1398,22 @@ apiRouter.get("/sales", authenticateToken, async (req, res) => {
       const formattedSales = sales.map((sale: any) => {
         let d = sale.date instanceof Date ? sale.date : new Date(sale.date);
         let dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        let dueStr: string | null = null;
+        if (sale.due_date) {
+          let dd = sale.due_date instanceof Date ? sale.due_date : new Date(sale.due_date);
+          if (!isNaN(dd.getTime())) {
+            dueStr = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, "0")}-${String(dd.getDate()).padStart(2, "0")}`;
+          }
+        }
         return {
           ...sale,
           date: dateStr,
+          due_date: dueStr,
+          payment_status: sale.payment_status || "lunas",
+          amount_paid:
+            sale.payment_status === "piutang"
+              ? Number(sale.amount_paid || 0)
+              : Number(sale.total_revenue || 0),
           items: itemsBySale.get(sale.id) || [],
         };
       });
@@ -1364,10 +1533,43 @@ apiRouter.post("/sales", authenticateToken, async (req, res) => {
     // Update the parent record with calculated totals
     totalRev = roundPrice(totalRev);
     totalCost = roundPrice(totalCost);
+    const salePaymentStatus =
+      req.body.payment_status === "piutang" ? "piutang" : "lunas";
+    const saleAmountPaid =
+      salePaymentStatus === "lunas"
+        ? totalRev
+        : Math.min(totalRev, Math.max(0, Number(req.body.amount_paid || 0)));
+    const saleDueDate =
+      salePaymentStatus === "piutang" && req.body.due_date
+        ? req.body.due_date
+        : null;
+
     await connection.query(
-      "UPDATE sales SET total_revenue = ?, total_cost = ?, total_profit = ? WHERE id = ?",
-      [totalRev, totalCost, totalRev - totalCost, id],
+      "UPDATE sales SET total_revenue = ?, total_cost = ?, total_profit = ?, payment_status = ?, amount_paid = ?, due_date = ? WHERE id = ?",
+      [
+        totalRev,
+        totalCost,
+        totalRev - totalCost,
+        salePaymentStatus,
+        saleAmountPaid,
+        saleDueDate,
+        id,
+      ],
     );
+
+    if (salePaymentStatus === "piutang" && saleAmountPaid > 0) {
+      await connection.query(
+        "INSERT INTO debt_payments (id, reference_type, reference_id, amount, payment_date, notes, created_by) VALUES (?, 'sale', ?, ?, ?, ?, ?)",
+        [
+          crypto.randomUUID(),
+          id,
+          saleAmountPaid,
+          date,
+          "Uang Muka (DP Awal)",
+          req.user?.username || "System",
+        ],
+      );
+    }
 
     await connection.commit();
     await logAudit(req.user.id, "SALE", `Sale ${id} to ${customer_name}`);
@@ -2050,6 +2252,457 @@ apiRouter.get("/audit-logs", authenticateToken, async (req, res) => {
     res.json(rows);
   } else {
     res.json([]);
+  }
+});
+
+// ============================================================
+// FITUR 1: HUTANG SUPPLIER & PIUTANG PELANGGAN (DEBT PAYMENTS)
+// ============================================================
+apiRouter.get("/debt-payments", authenticateToken, async (req, res) => {
+  try {
+    if (dbConnected && pool) {
+      const [rows]: any = await pool!.query(
+        "SELECT * FROM debt_payments ORDER BY payment_date DESC, created_at DESC",
+      );
+      const formatted = rows.map((r: any) => {
+        const d =
+          r.payment_date instanceof Date
+            ? r.payment_date
+            : new Date(r.payment_date);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return { ...r, amount: Number(r.amount || 0), payment_date: dateStr };
+      });
+      res.json(formatted);
+    } else {
+      res.json([]);
+    }
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+apiRouter.post("/debt-payments", authenticateToken, async (req, res) => {
+  const { id, reference_type, reference_id, amount, payment_date, notes } =
+    req.body;
+  const numAmount = Number(amount || 0);
+  if (!reference_type || !reference_id || numAmount <= 0 || !payment_date) {
+    return res
+      .status(400)
+      .json({ error: "Data pembayaran cicilan tidak lengkap" });
+  }
+
+  if (!dbConnected || !pool) {
+    return res.status(201).json({ message: "Mock payment saved" });
+  }
+
+  const connection = await pool!.getConnection();
+  try {
+    await connection.beginTransaction();
+    const paymentId = id || crypto.randomUUID();
+    const createdBy = req.user?.username || "System";
+
+    await connection.query(
+      "INSERT INTO debt_payments (id, reference_type, reference_id, amount, payment_date, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [
+        paymentId,
+        reference_type,
+        reference_id,
+        numAmount,
+        payment_date,
+        notes || "Pembayaran Cicilan",
+        createdBy,
+      ],
+    );
+
+    if (reference_type === "purchase") {
+      const [rows]: any = await connection.query(
+        "SELECT total_value, amount_paid, supplierName FROM wood_sets WHERE id = ?",
+        [reference_id],
+      );
+      if (rows.length > 0) {
+        const totalVal = Number(rows[0].total_value || 0);
+        const newPaid = Math.min(
+          totalVal,
+          Number(rows[0].amount_paid || 0) + numAmount,
+        );
+        const newStatus = newPaid >= totalVal ? "lunas" : "hutang";
+        await connection.query(
+          "UPDATE wood_sets SET amount_paid = ?, payment_status = ? WHERE id = ?",
+          [newPaid, newStatus, reference_id],
+        );
+        await logAudit(
+          req.user.id,
+          "PAY_DEBT",
+          `Bayar hutang pembelian ke ${rows[0].supplierName}: Rp${numAmount.toLocaleString("id-ID")} (${newStatus.toUpperCase()})`,
+        );
+      }
+    } else if (reference_type === "sale") {
+      const [rows]: any = await connection.query(
+        "SELECT total_revenue, amount_paid, customer_name FROM sales WHERE id = ?",
+        [reference_id],
+      );
+      if (rows.length > 0) {
+        const totalRev = Number(rows[0].total_revenue || 0);
+        const newPaid = Math.min(
+          totalRev,
+          Number(rows[0].amount_paid || 0) + numAmount,
+        );
+        const newStatus = newPaid >= totalRev ? "lunas" : "piutang";
+        await connection.query(
+          "UPDATE sales SET amount_paid = ?, payment_status = ? WHERE id = ?",
+          [newPaid, newStatus, reference_id],
+        );
+        await logAudit(
+          req.user.id,
+          "RECEIVE_RECEIVABLE",
+          `Terima pembayaran piutang dari ${rows[0].customer_name}: Rp${numAmount.toLocaleString("id-ID")} (${newStatus.toUpperCase()})`,
+        );
+      }
+    }
+
+    await connection.commit();
+    res.status(201).json({ id: paymentId, message: "Pembayaran berhasil dicatat" });
+  } catch (e) {
+    await connection.rollback();
+    res.status(500).json({ error: (e as Error).message });
+  } finally {
+    connection.release();
+  }
+});
+
+// ============================================================
+// FITUR 2: PRESENSI HARIAN & PENGGAJIAN KARYAWAN
+// ============================================================
+apiRouter.get("/employees", authenticateToken, async (req, res) => {
+  try {
+    if (dbConnected && pool) {
+      const [rows]: any = await pool!.query(
+        "SELECT * FROM employees ORDER BY status ASC, name ASC",
+      );
+      res.json(
+        rows.map((r: any) => ({ ...r, daily_wage: Number(r.daily_wage || 0) })),
+      );
+    } else {
+      res.json([]);
+    }
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+apiRouter.post("/employees", authenticateToken, async (req, res) => {
+  const { id, name, position, phone, daily_wage, status } = req.body;
+  if (!name || !position || daily_wage === undefined) {
+    return res.status(400).json({ error: "Data karyawan belum lengkap" });
+  }
+  const empId = id || crypto.randomUUID();
+  try {
+    if (dbConnected && pool) {
+      await pool!.query(
+        `INSERT INTO employees (id, name, position, phone, daily_wage, status)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           name = VALUES(name),
+           position = VALUES(position),
+           phone = VALUES(phone),
+           daily_wage = VALUES(daily_wage),
+           status = VALUES(status)`,
+        [
+          empId,
+          name.trim(),
+          position.trim(),
+          phone || "",
+          Number(daily_wage || 0),
+          status || "aktif",
+        ],
+      );
+      await logAudit(
+        req.user.id,
+        "UPSERT_EMPLOYEE",
+        `Simpan karyawan: ${name} (${position}) - Upah Rp${Number(daily_wage).toLocaleString("id-ID")}/hari`,
+      );
+    }
+    res.status(201).json({ id: empId });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+apiRouter.delete("/employees/:id", authenticateToken, async (req, res) => {
+  if (req.user.role !== "owner") {
+    return res
+      .status(403)
+      .json({ error: "Hanya Owner yang dapat menghapus data karyawan" });
+  }
+  const { id } = req.params;
+  try {
+    if (dbConnected && pool) {
+      const [rows]: any = await pool!.query(
+        "SELECT name FROM employees WHERE id = ?",
+        [id],
+      );
+      await pool!.query("DELETE FROM employees WHERE id = ?", [id]);
+      await logAudit(
+        req.user.id,
+        "DELETE_EMPLOYEE",
+        `Hapus karyawan: ${rows[0]?.name || id}`,
+      );
+    }
+    res.json({ message: "Deleted" });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// Presensi Harian (Dapat diakses oleh Mandor & Owner)
+apiRouter.get("/attendance", authenticateToken, async (req, res) => {
+  try {
+    if (dbConnected && pool) {
+      const [rows]: any = await pool!.query(
+        `SELECT a.*, e.name as employee_name
+         FROM attendance a
+         JOIN employees e ON a.employee_id = e.id
+         ORDER BY a.date DESC, e.name ASC`,
+      );
+      const formatted = rows.map((r: any) => {
+        const d = r.date instanceof Date ? r.date : new Date(r.date);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return {
+          ...r,
+          date: dateStr,
+          overtime_pay: Number(r.overtime_pay || 0),
+          cash_advance: Number(r.cash_advance || 0),
+        };
+      });
+      res.json(formatted);
+    } else {
+      res.json([]);
+    }
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+apiRouter.post("/attendance", authenticateToken, async (req, res) => {
+  const recordedBy = req.user?.username || "System";
+  const records = Array.isArray(req.body?.records)
+    ? req.body.records
+    : [req.body];
+
+  if (
+    records.length === 0 ||
+    !records[0]?.employee_id ||
+    !records[0]?.date ||
+    !records[0]?.status
+  ) {
+    return res.status(400).json({ error: "Data presensi tidak lengkap" });
+  }
+
+  try {
+    if (dbConnected && pool) {
+      for (const rec of records) {
+        const attId = rec.id || crypto.randomUUID();
+        await pool!.query(
+          `INSERT INTO attendance (id, employee_id, date, status, overtime_pay, cash_advance, notes, recorded_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             status = VALUES(status),
+             overtime_pay = VALUES(overtime_pay),
+             cash_advance = VALUES(cash_advance),
+             notes = VALUES(notes),
+             recorded_by = VALUES(recorded_by)`,
+          [
+            attId,
+            rec.employee_id,
+            rec.date,
+            rec.status,
+            Number(rec.overtime_pay || 0),
+            Number(rec.cash_advance || 0),
+            rec.notes || "",
+            recordedBy,
+          ],
+        );
+      }
+      await logAudit(
+        req.user.id,
+        "RECORD_ATTENDANCE",
+        `Presensi harian (${records.length} karyawan) tanggal ${records[0].date}`,
+      );
+    }
+    res.status(201).json({ count: records.length });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// Penggajian / Pencairan Gaji (Khusus Owner - Otomatis masuk ke tabel expenses)
+apiRouter.get("/payrolls", authenticateToken, async (req, res) => {
+  try {
+    if (dbConnected && pool) {
+      const [rows]: any = await pool!.query(
+        "SELECT * FROM payrolls ORDER BY payment_date DESC, created_at DESC",
+      );
+      const formatted = rows.map((r: any) => {
+        const formatD = (val: any) => {
+          const d = val instanceof Date ? val : new Date(val);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        };
+        return {
+          ...r,
+          period_start: formatD(r.period_start),
+          period_end: formatD(r.period_end),
+          payment_date: formatD(r.payment_date),
+          daily_wage: Number(r.daily_wage || 0),
+          base_salary: Number(r.base_salary || 0),
+          total_overtime: Number(r.total_overtime || 0),
+          total_deduction: Number(r.total_deduction || 0),
+          net_salary: Number(r.net_salary || 0),
+        };
+      });
+      res.json(formatted);
+    } else {
+      res.json([]);
+    }
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+apiRouter.post("/payrolls", authenticateToken, async (req, res) => {
+  if (req.user.role !== "owner") {
+    return res
+      .status(403)
+      .json({ error: "Hanya Owner yang dapat mencairkan penggajian karyawan" });
+  }
+
+  const {
+    id,
+    employee_id,
+    employee_name,
+    period_start,
+    period_end,
+    total_hadir,
+    total_setengah_hari,
+    daily_wage,
+    base_salary,
+    total_overtime,
+    total_deduction,
+    net_salary,
+    payment_date,
+    notes,
+  } = req.body;
+
+  if (!employee_id || !period_start || !period_end || !payment_date) {
+    return res.status(400).json({ error: "Data penggajian belum lengkap" });
+  }
+
+  if (!dbConnected || !pool) {
+    return res.status(201).json({ message: "Mock payroll saved" });
+  }
+
+  const connection = await pool!.getConnection();
+  try {
+    await connection.beginTransaction();
+    const payrollId = id || crypto.randomUUID();
+    const expenseId = crypto.randomUUID();
+    const netAmount = Math.max(0, Number(net_salary || 0));
+
+    // 1. Otomatis catat ke tabel expenses agar langsung terhitung di Pengeluaran & Laporan Laba Bersih
+    const expDesc = `Gaji Karyawan: ${employee_name} (Periode ${period_start} s/d ${period_end} • ${total_hadir} Hadir, ${total_setengah_hari} Setengah Hari)`;
+    await connection.query(
+      "INSERT INTO expenses (id, category, description, amount, date) VALUES (?, ?, ?, ?, ?)",
+      [expenseId, "Gaji & Upah", expDesc, netAmount, payment_date],
+    );
+
+    // 2. Simpan slip gaji ke tabel payrolls
+    await connection.query(
+      `INSERT INTO payrolls (
+        id, employee_id, employee_name, period_start, period_end,
+        total_hadir, total_setengah_hari, daily_wage, base_salary,
+        total_overtime, total_deduction, net_salary, payment_date, expense_id, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        payrollId,
+        employee_id,
+        employee_name,
+        period_start,
+        period_end,
+        Number(total_hadir || 0),
+        Number(total_setengah_hari || 0),
+        Number(daily_wage || 0),
+        Number(base_salary || 0),
+        Number(total_overtime || 0),
+        Number(total_deduction || 0),
+        netAmount,
+        payment_date,
+        expenseId,
+        notes || "",
+      ],
+    );
+
+    // 3. Tandai presensi karyawan pada rentang tanggal tersebut bahwa sudah dibayarkan
+    await connection.query(
+      `UPDATE attendance
+       SET payroll_id = ?
+       WHERE employee_id = ? AND date >= ? AND date <= ? AND payroll_id IS NULL`,
+      [payrollId, employee_id, period_start, period_end],
+    );
+
+    await connection.commit();
+    await logAudit(
+      req.user.id,
+      "PAYROLL_DISBURSED",
+      `Pencairan gaji ${employee_name} (${period_start} - ${period_end}): Rp${netAmount.toLocaleString("id-ID")}`,
+    );
+
+    res.status(201).json({ id: payrollId, expense_id: expenseId });
+  } catch (e) {
+    await connection.rollback();
+    res.status(500).json({ error: (e as Error).message });
+  } finally {
+    connection.release();
+  }
+});
+
+apiRouter.delete("/payrolls/:id", authenticateToken, async (req, res) => {
+  if (req.user.role !== "owner") {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+  const { id } = req.params;
+  if (!dbConnected || !pool) return res.json({ message: "Deleted" });
+
+  const connection = await pool!.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows]: any = await connection.query(
+      "SELECT * FROM payrolls WHERE id = ?",
+      [id],
+    );
+    if (rows.length > 0) {
+      const p = rows[0];
+      if (p.expense_id) {
+        await connection.query("DELETE FROM expenses WHERE id = ?", [
+          p.expense_id,
+        ]);
+      }
+      await connection.query(
+        "UPDATE attendance SET payroll_id = NULL WHERE payroll_id = ?",
+        [id],
+      );
+      await connection.query("DELETE FROM payrolls WHERE id = ?", [id]);
+      await logAudit(
+        req.user.id,
+        "DELETE_PAYROLL",
+        `Batal/Hapus pencairan gaji ${p.employee_name}: Rp${Number(p.net_salary).toLocaleString("id-ID")}`,
+      );
+    }
+    await connection.commit();
+    res.json({ message: "Deleted" });
+  } catch (e) {
+    await connection.rollback();
+    res.status(500).json({ error: (e as Error).message });
+  } finally {
+    connection.release();
   }
 });
 

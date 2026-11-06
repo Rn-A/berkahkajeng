@@ -1499,7 +1499,7 @@ export default function PurchaseView({
           )}
 
           <div className="bg-[#1c1c1c] dark:bg-zinc-900 text-white p-6 rounded-2xl print:hidden flex flex-col gap-6 shadow-xl">
-            <div className="space-y-4 mb-4">
+            <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-[12px] font-bold uppercase tracking-[0.2em] text-zinc-400">Total Kubikasi</span>
                 <span className="font-mono font-bold text-2xl">{totals.volume.toFixed(4)} m³</span>
@@ -1509,6 +1509,84 @@ export default function PurchaseView({
                 <span className="font-bold text-2xl">{formatCurrency(totals.price)}</span>
               </div>
             </div>
+
+            {/* Pilihan Status Pembayaran (Lunas / Hutang ke Supplier) */}
+            {activeSet && (
+              <div className="pt-4 border-t border-white/10 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">Status Pembayaran</span>
+                  <div className="flex bg-white/10 p-1 rounded-xl gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveSet({ ...activeSet, payment_status: 'lunas', amount_paid: totals.price, due_date: null })}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                        (activeSet.payment_status || 'lunas') === 'lunas'
+                          ? "bg-emerald-500 text-white shadow-sm"
+                          : "text-zinc-300 hover:text-white"
+                      )}
+                    >
+                      Lunas
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveSet({ ...activeSet, payment_status: 'hutang', amount_paid: activeSet.amount_paid ?? 0 })}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                        activeSet.payment_status === 'hutang'
+                          ? "bg-amber-500 text-white shadow-sm"
+                          : "text-zinc-300 hover:text-white"
+                      )}
+                    >
+                      Hutang / Tempo
+                    </button>
+                  </div>
+                </div>
+
+                {activeSet.payment_status === 'hutang' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                        Uang Muka / DP Dibayar (Rp)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max={totals.price}
+                        placeholder="0"
+                        className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white font-mono text-sm focus:outline-none focus:border-amber-400"
+                        value={activeSet.amount_paid || ''}
+                        onChange={(e) =>
+                          setActiveSet({
+                            ...activeSet,
+                            amount_paid: Math.min(totals.price, Math.max(0, Number(e.target.value || 0))),
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                        Jatuh Tempo Pelunasan
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none focus:border-amber-400"
+                        value={activeSet.due_date || ''}
+                        onChange={(e) =>
+                          setActiveSet({ ...activeSet, due_date: e.target.value || null })
+                        }
+                      />
+                    </div>
+                    <div className="sm:col-span-2 flex justify-between items-center pt-2 border-t border-white/10 text-xs">
+                      <span className="text-amber-400 font-bold uppercase tracking-wider">Sisa Hutang ke Supplier:</span>
+                      <span className="font-mono font-bold text-base text-amber-400">
+                        {formatCurrency(Math.max(0, totals.price - Number(activeSet.amount_paid || 0)))}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <button
               onClick={() => {
@@ -1521,7 +1599,16 @@ export default function PurchaseView({
                       volume: calculateVolume(log.diameter, cat.length || 200)
                     }))
                   }));
-                  const sanitizedSet = { ...activeSet, categories: sanitizedCategories };
+                  const isHutang = activeSet.payment_status === 'hutang';
+                  const sanitizedSet = {
+                    ...activeSet,
+                    categories: sanitizedCategories,
+                    total_volume: totals.volume,
+                    total_value: totals.price,
+                    payment_status: isHutang ? ('hutang' as const) : ('lunas' as const),
+                    amount_paid: isHutang ? Math.min(totals.price, Number(activeSet.amount_paid || 0)) : totals.price,
+                    due_date: isHutang ? (activeSet.due_date || null) : null,
+                  };
                   setActiveSet(sanitizedSet);
                   // Pass directly to ensure closure has the updated state
                   onSave(sanitizedSet);
@@ -1530,7 +1617,7 @@ export default function PurchaseView({
                 }
               }}
               disabled={isLoading}
-              className={`w-full py-2 bg-transparent text-white rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-white/5 active:scale-95 text-lg font-medium tracking-wide ${isLoading ? 'opacity-50' : ''}`}
+              className={`w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 text-base font-bold tracking-wide shadow-lg ${isLoading ? 'opacity-50' : ''}`}
             >
               <Save size={20} />
               {isLoading ? 'Menyimpan...' : 'Simpan & Masuk Stok'}

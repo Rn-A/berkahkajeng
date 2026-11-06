@@ -31,6 +31,9 @@ export interface WoodSet {
   categories: WoodCategory[];
   total_volume: number;
   total_value: number;
+  payment_status?: 'lunas' | 'hutang';
+  amount_paid?: number;
+  due_date?: string | null;
 }
 
 export interface InventoryItem {
@@ -68,6 +71,62 @@ export interface Sale {
   total_cost: number;
   total_profit: number;
   items: SaleItem[];
+  payment_status?: 'lunas' | 'piutang';
+  amount_paid?: number;
+  due_date?: string | null;
+}
+
+export interface DebtPayment {
+  id: string;
+  reference_type: 'purchase' | 'sale';
+  reference_id: string;
+  amount: number;
+  payment_date: string;
+  notes?: string;
+  created_by?: string;
+  created_at?: string;
+}
+
+export interface Employee {
+  id: string;
+  name: string;
+  position: string;
+  phone?: string;
+  daily_wage: number;
+  status: 'aktif' | 'nonaktif';
+  created_at?: string;
+}
+
+export interface Attendance {
+  id: string;
+  employee_id: string;
+  employee_name?: string;
+  date: string;
+  status: 'hadir' | 'setengah_hari' | 'izin' | 'alfa';
+  overtime_pay: number;
+  cash_advance: number;
+  notes?: string;
+  recorded_by?: string;
+  payroll_id?: string | null;
+}
+
+export interface Payroll {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  period_start: string;
+  period_end: string;
+  total_hadir: number;
+  total_setengah_hari: number;
+  daily_wage: number;
+  base_salary: number;
+  total_overtime: number;
+  total_deduction: number;
+  net_salary: number;
+  payment_date: string;
+  expense_id?: string | null;
+  notes?: string;
+  created_at?: string;
 }
 
 export interface User {

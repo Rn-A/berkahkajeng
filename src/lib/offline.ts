@@ -20,7 +20,11 @@ export type OfflineActionType =
   | "EXPENSE_SAVE"
   | "SUPPLIER_SAVE"
   | "CUSTOMER_SAVE"
-  | "WOOD_TYPE_ADD";
+  | "WOOD_TYPE_ADD"
+  | "DEBT_PAYMENT_CREATE"
+  | "EMPLOYEE_SAVE"
+  | "ATTENDANCE_SAVE"
+  | "PAYROLL_CREATE";
 
 export interface OfflineQueueItem {
   id: string;

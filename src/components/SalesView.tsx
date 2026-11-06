@@ -259,6 +259,9 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
   const [saleItems, setSaleItems] = useState<any[]>([]);
+  const [paymentStatus, setPaymentStatus] = useState<'lunas' | 'piutang'>('lunas');
+  const [amountPaid, setAmountPaid] = useState<number>(0);
+  const [dueDate, setDueDate] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -788,15 +791,23 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
 
     setIsLoading(true);
     try {
+      const isPiutang = paymentStatus === 'piutang';
       await onSave({
         id: generateUUID(),
         customer_name: customerName,
         date: saleDate,
-        items: saleItems
+        items: saleItems,
+        total_revenue: totals.revenue,
+        payment_status: isPiutang ? 'piutang' : 'lunas',
+        amount_paid: isPiutang ? Math.min(totals.revenue, Math.max(0, Number(amountPaid || 0))) : totals.revenue,
+        due_date: isPiutang && dueDate ? dueDate : null,
       });
       setShowForm(false);
       setCustomerName('');
       setSaleItems([]);
+      setPaymentStatus('lunas');
+      setAmountPaid(0);
+      setDueDate('');
     } catch (error) {
       console.error(error);
     } finally {
@@ -1093,6 +1104,78 @@ export default function SalesView({ inventory, onSave, onDelete, salesHistory, c
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Pilihan Status Pembayaran Penjualan (Lunas / Piutang Pelanggan) */}
+              <div className="p-6 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-widest">Metode & Status Pembayaran</h4>
+                    <p className="text-xs text-zinc-500">Pilih Piutang / Tempo jika pelanggan membayar DP atau tempo.</p>
+                  </div>
+                  <div className="flex bg-zinc-200/70 dark:bg-zinc-800 p-1 rounded-xl gap-1 self-start">
+                    <button
+                      type="button"
+                      onClick={() => { setPaymentStatus('lunas'); setAmountPaid(totals.revenue); }}
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                        paymentStatus === 'lunas'
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                      )}
+                    >
+                      Lunas
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setPaymentStatus('piutang'); setAmountPaid(0); }}
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                        paymentStatus === 'piutang'
+                          ? "bg-amber-500 text-white shadow-sm"
+                          : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                      )}
+                    >
+                      Piutang / Tempo
+                    </button>
+                  </div>
+                </div>
+
+                {paymentStatus === 'piutang' && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1.5">
+                        Uang Muka / DP Diterima (Rp)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max={totals.revenue}
+                        placeholder="Contoh: 5000000"
+                        className="input-field w-full font-mono"
+                        value={amountPaid || ''}
+                        onChange={(e) => setAmountPaid(Math.min(totals.revenue, Math.max(0, Number(e.target.value || 0))))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1.5">
+                        Tanggal Jatuh Tempo
+                      </label>
+                      <input
+                        type="date"
+                        className="input-field w-full"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex flex-col justify-center p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50">
+                      <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest">Sisa Piutang Pelanggan</span>
+                      <span className="text-lg font-mono font-black text-amber-600 dark:text-amber-400">
+                        {formatCurrency(Math.max(0, totals.revenue - Number(amountPaid || 0)))}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
