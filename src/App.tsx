@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   LayoutDashboard,
   Truck,
@@ -54,6 +54,16 @@ import {
   applyOptimisticSaleToInventory,
   OfflineQueueItem,
 } from "./lib/offline";
+import {
+  generateSmartNotifications,
+  loadReadNotificationIds,
+  markNotificationsAsRead,
+  registerNotificationServiceWorker,
+  dispatchNewOsNotifications,
+  sendSystemNotification,
+  AppNotification,
+} from "./lib/notifications";
+import NotificationBell from "./components/NotificationBell";
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
   React.lazy(async () => {
     try {
@@ -230,6 +240,57 @@ export default function App() {
     loadOfflineQueue(),
   );
   const [isSyncing, setIsSyncing] = useState(false);
+  const [readNotifIds, setReadNotifIds] = useState<string[]>(() =>
+    loadReadNotificationIds(),
+  );
+
+  const smartNotifications = useMemo(() => {
+    if (!auth.isAuthenticated) return [];
+    return generateSmartNotifications({
+      role: auth.user?.role || "mandor",
+      purchases: history,
+      sales: salesHistory,
+      inventory,
+      employees,
+      attendance,
+      debtPayments,
+      offlineQueue,
+      activeSet,
+    });
+  }, [
+    auth.isAuthenticated,
+    auth.user?.role,
+    history,
+    salesHistory,
+    inventory,
+    employees,
+    attendance,
+    debtPayments,
+    offlineQueue,
+    activeSet,
+  ]);
+
+  // Register Service Worker & listen for notification tap navigation
+  useEffect(() => {
+    registerNotificationServiceWorker();
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      const handleSwMessage = (event: MessageEvent) => {
+        if (event.data?.type === "NAVIGATE_VIEW" && event.data?.targetView) {
+          setActiveView(event.data.targetView as ViewType);
+        }
+      };
+      navigator.serviceWorker.addEventListener("message", handleSwMessage);
+      return () =>
+        navigator.serviceWorker.removeEventListener("message", handleSwMessage);
+    }
+  }, []);
+
+  // Automatically dispatch OS status-bar notifications for critical/new items
+  useEffect(() => {
+    if (auth.isAuthenticated && smartNotifications.length > 0) {
+      dispatchNewOsNotifications(smartNotifications);
+    }
+  }, [auth.isAuthenticated, smartNotifications]);
 
   // Persist activeSet draft & cached data automatically
   useEffect(() => {
@@ -613,6 +674,12 @@ export default function App() {
           `${syncedCount} transaksi offline berhasil disinkronkan ke server!`,
           "success",
         );
+        sendSystemNotification(
+          "✅ Sinkronisasi Offline Berhasil",
+          `${syncedCount} transaksi offline telah tersimpan ke server Berkah Kajeng.`,
+          `sync-done-${Date.now()}`,
+          "dashboard",
+        );
         await fetchData(activeView);
       }
     } finally {
@@ -683,6 +750,8 @@ export default function App() {
           fetchWithAuth("/api/customers"),
           fetchWithAuth("/api/wood-types"),
           fetchWithAuth("/api/employees"),
+          fetchWithAuth("/api/attendance"),
+          fetchWithAuth("/api/debt-payments"),
         ]).then(async (res) => {
           if (res[0].status === "fulfilled" && res[0].value?.ok)
             setSuppliers(await res[0].value.json());
@@ -692,6 +761,10 @@ export default function App() {
             setWoodTypes(await res[2].value.json());
           if (res[3].status === "fulfilled" && res[3].value?.ok)
             setEmployees(await res[3].value.json());
+          if (res[4].status === "fulfilled" && res[4].value?.ok)
+            setAttendance(await res[4].value.json());
+          if (res[5].status === "fulfilled" && res[5].value?.ok)
+            setDebtPayments(await res[5].value.json());
         });
       }
     }, 1500);
@@ -1569,6 +1642,22 @@ export default function App() {
               {auth.user?.role}
             </p>
           </div>
+          <NotificationBell
+            isMobile
+            notifications={smartNotifications}
+            readIds={readNotifIds}
+            onMarkAllRead={() =>
+              setReadNotifIds(
+                markNotificationsAsRead(smartNotifications.map((n) => n.id)),
+              )
+            }
+            onMarkOneRead={(id) =>
+              setReadNotifIds(markNotificationsAsRead([id]))
+            }
+            onSelectNotification={(notif: AppNotification) =>
+              setActiveView(notif.targetView as ViewType)
+            }
+          />
           <button
             onClick={handleLogout}
             className="w-9 h-9 bg-white/10 rounded-full flex items-center justify-center"
@@ -1711,6 +1800,21 @@ export default function App() {
                 {auth.user?.username}
               </p>
             </div>
+            <NotificationBell
+              notifications={smartNotifications}
+              readIds={readNotifIds}
+              onMarkAllRead={() =>
+                setReadNotifIds(
+                  markNotificationsAsRead(smartNotifications.map((n) => n.id)),
+                )
+              }
+              onMarkOneRead={(id) =>
+                setReadNotifIds(markNotificationsAsRead([id]))
+              }
+              onSelectNotification={(notif: AppNotification) =>
+                setActiveView(notif.targetView as ViewType)
+              }
+            />
             <button
               onClick={handleLogout}
               className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-full border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-red-500 transition-colors"
